@@ -29,6 +29,10 @@ class UNet(object):
         return layers.Concatenate(axis = 3)([a, b])
 
     def create_model(self, source_shape, num_class):
+        # NOTE: iPhone RGB resolution is 3088x2320
+        # iPhone Depth Map resolution is 640x480
+        # We should be able to designate variable input size for the network
+        # by setting shape = (num_channels, None, None)
         inputs = layers.Input(shape = source_shape)#256x256
 
         conv1 = self._CommonConv(32, "conv1_1")(inputs)#254x254
