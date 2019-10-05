@@ -3,8 +3,8 @@ MODEL DEFINITION
 Inspiration from https://github.com/zhixuhao/unet/blob/master/model.py
 """
 
-from keras import layers, models
-from keras.optimizers import Adam
+from tensorflow.keras import layers, models
+from tensorflow.keras.optimizers import Adam
 
 class UNet(object):
     def __init__(self, source_shape, num_class):
@@ -23,7 +23,7 @@ class UNet(object):
 
     def _CommonDeconv(self, filters, name, inputs):
         up = layers.UpSampling2D(size = (2, 2))(inputs)
-        return self._CommonConv(filters=filters, kernel_size=2, activation="relu", padding="same", kernel_initializer="he_normal", name=name)(up)
+        return self._CommonConv(filters=filters, name=name, kernel_size=2)(up)
 
     def _CommonMerge(self, a, b):
         return layers.Concatenate(axis = 3)([a, b])
@@ -58,7 +58,7 @@ class UNet(object):
         conv5 = self._CommonConv(32, "conv5_2")(conv5)
 
         conv6 = layers.Conv2D(filters=num_class, kernel_size=1, activation="sigmoid")(conv5)
-        outputs = layers.Reshape((256, 256))(conv6)
+        outputs = layers.Reshape((source_shape[0], source_shape[1]))(conv6)
 
         self.model = models.Model(inputs = inputs, outputs = outputs)
         print("UNet constructed")

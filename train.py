@@ -31,11 +31,16 @@ class OurData(Sequence):
         first_y = np.load(os.path.join(self.y_dir, '%.5d.npy' % start))
 
         X = np.zeros((self.batch_size, first_x.shape[0], first_x.shape[1], first_x.shape[2]))
-        Y = np.zeros((self.batch_size, first_y.shape[0], first_y.shape[1], first_y.shape[2]))
+        Y = np.zeros((self.batch_size, first_y.shape[0], first_y.shape[1]))
 
         for i in range(self.batch_size):
-            X[i] = np.load(os.path.join(self.x_dir, '%.5d.npy' % start + i))
-            Y[i] = np.load(os.path.join(self.y_dir, '%.5d.npy' % start + i))
+            imageX = np.load(os.path.join(self.x_dir, '%.5d.npy' % (start + i)))
+            imageX = np.expand_dims(imageX, axis=0)
+            X[i] = imageX
+            # X.append(np.moveaxis(image, 2, 0))
+            imageY = np.load(os.path.join(self.y_dir, '%.5d.npy' % (start + i)))
+            imageY = np.expand_dims(imageY, axis=0)
+            Y[i] = imageY
 
         return X, Y
 
@@ -43,9 +48,9 @@ class OurData(Sequence):
 if __name__ == '__main__':
     from unet import UNet
 
-    INPUT_DIR = './input'
-    OUTPUT_DIR = './output'
-    BATCH_SIZE = 32
+    INPUT_DIR = '/stor/ResearchData/Handtracking/Datasets/RHD_published_v2/training/four_channel'
+    OUTPUT_DIR = '/stor/ResearchData/Handtracking/Datasets/RHD_published_v2/training/hands'
+    BATCH_SIZE = 12
 
     generator = OurData(INPUT_DIR, OUTPUT_DIR, BATCH_SIZE)
 
