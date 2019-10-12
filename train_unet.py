@@ -1,14 +1,11 @@
 """
 TRAIN
 """
+from util import *
 import os
 import math
 import numpy as np
 from tensorflow.keras.utils import Sequence
-
-
-def num_files_in(dir):
-    return len(next(os.walk(dir))[2])
 
 class OurData(Sequence):
     def __init__(self, x_dir, y_dir, batch_size):
@@ -55,6 +52,9 @@ if __name__ == '__main__':
     generator = OurData(INPUT_DIR, OUTPUT_DIR, BATCH_SIZE)
 
     unet = UNet((320, 320, 4), 1)
+    unet.build()
+    unet.compile()
+
     unet.model.fit(generator,
                    epochs = 1,
                    verbose = 1,
@@ -62,4 +62,4 @@ if __name__ == '__main__':
                    workers = 4,
                    use_multiprocessing = True)
 
-    unet.model.save("trained_unet.h5")
+    unet.model.save('trained_unet.h5')
