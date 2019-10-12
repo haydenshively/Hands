@@ -70,11 +70,11 @@ class VAE(Model):
         dens2 = layers.Dense(num_neurons, activation='relu')(self.decoder_inputs)
         dens2_unflattened = layers.Reshape((self.encoder_output_shape[1], self.encoder_output_shape[2], self.encoder_output_shape[3]))(dens2)
 
-        conv4 = Conv2DTranspose(filters=self.filters*8, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(dens2_unflattened)
-        conv5 = Conv2DTranspose(filters=self.filters*4, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(conv4)
-        conv6 = Conv2DTranspose(filters=self.filters*2, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(conv5)
+        conv4 = layers.Conv2DTranspose(filters=self.filters*8, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(dens2_unflattened)
+        conv5 = layers.Conv2DTranspose(filters=self.filters*4, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(conv4)
+        conv6 = layers.Conv2DTranspose(filters=self.filters*2, kernel_size=self.kernel_size, activation='relu', strides=2, padding='same')(conv5)
 
-        self.decoder_outputs = Conv2DTranspose(filters=1, kernel_size=self.kernel_size, activation='sigmoid', padding='same', name='decoder_output')(conv6)
+        self.decoder_outputs = layers.Conv2DTranspose(filters=1, kernel_size=self.kernel_size, activation='sigmoid', padding='same', name='decoder_output')(conv6)
 
 
     def compile(self):

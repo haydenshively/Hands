@@ -19,7 +19,7 @@ latent_dim = 30
 
 
 if __name__ == '__main__':
-    from vae import VAE
+    from model_vae import VAE
 
     vae = VAE(input_shape, kernel_size, filters, latent_dim)
     vae.build()
