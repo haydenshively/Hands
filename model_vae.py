@@ -79,7 +79,7 @@ class VAE(Model):
 
     def compile(self):
         reconstruction_loss = binary_crossentropy(K.flatten(self.inputs), K.flatten(self.outputs))
-        reconstruction_loss *= image_size * image_size
+        reconstruction_loss *= self.input_shape[0] * self.input_shape[0]
 
         kl_loss = 1 + self.z_log_var - K.square(self.z_mean) - K.exp(self.z_log_var)
         kl_loss = K.sum(kl_loss, axis=-1)

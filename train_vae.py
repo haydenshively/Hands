@@ -14,8 +14,8 @@ x_test = x_test.astype('float32') / 255
 
 input_shape = (image_size, image_size, 1)
 kernel_size = 3
-filters = 16
-latent_dim = 30
+filters = 32
+latent_dim = 21
 
 
 if __name__ == '__main__':
@@ -27,6 +27,6 @@ if __name__ == '__main__':
 
     # vae.vae.load_weights('vae_cnn_hands.h5')
 
-    vae.model.fit(x_train, epochs = 50, batch_size = 64, validation_data = (x_test, None))
+    vae.model.fit(x_train, epochs = 100, batch_size = 128, validation_data = (x_test, None))
 
     vae.model.save_weights('vae_cnn_hands_v2.h5')
