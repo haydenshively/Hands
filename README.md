@@ -17,3 +17,4 @@ http://www.cs.technion.ac.il/~twerd/HandNet/
   
 MSRA15  
 https://uca22be6b2a16ef725b483c931c6.dl.dropboxusercontent.com/cd/0/get/ApeybQ3QCY_pcSnwFlD0o2FpwTZ7nRqRknVvZCBlhX4QBl60SVNKrn21Rtb3Xhp83gdkgptdmWXWv6XTrwNr1tYBvKXEyILRrMd6vLt1B3Lh2g/file?_download_id=80269020247059355661344355717681039490740540792719380667707143195&_notify_domain=www.dropbox.com&dl=1
+https://www.dropbox.com/s/bmx2w0zbnyghtp7/cvpr15_MSRAHandGestureDB.zip?dl=0

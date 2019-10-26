@@ -34,6 +34,27 @@ def crop_square(img, rect):
     # now rotated rectangle becomes vertical and we crop it
     img_crop = cv2.getRectSubPix(img_rot, size, center)
     return img_crop, img_rot
+def crop_square_and_coords(img, rect, coords):
+    # get the parameter of the small rectangle
+    center, size, angle = rect[0], rect[1], rect[2]
+    center, size = tuple(map(int, center)), tuple(map(int, size))
+    size = (max(size), )*2
+    # get row and col num in img
+    height, width = img.shape[0], img.shape[1]
+    # calculate the rotation matrix
+    M = cv2.getRotationMatrix2D(center, angle, 1)
+    # rotate the original image
+    img_rot = cv2.warpAffine(img, M, (width, height))
+    # now rotated rectangle becomes vertical and we crop it
+    img_crop = cv2.getRectSubPix(img_rot, size, center)
+
+    # rotate coords
+    coords = coords[:,0]
+    coords_rot = np.dot(coords, M[:,:2].T) + M[:,2].T
+    crop_offset = np.array([center[0] - size[0]/2.0, center[1] - size[1]/2.0])
+    coords_rot -= crop_offset
+
+    return img_crop, img_rot, coords_rot
 
 # chose between training and evaluation set
 set = 'training'
@@ -95,6 +116,7 @@ for sample_id, anno in anno_all.items():
         kp_coord_uv_proj = kp_coord_uv_proj[21:]
     kp_coord_uv_proj = kp_coord_uv_proj[:, np.newaxis]
 
+
     # Generate hand mask
     mask[mask > 1] = 255
     mask[mask < 255] = 0
@@ -128,11 +150,28 @@ for sample_id, anno in anno_all.items():
     cv2.drawContours(image, [box], 0, (0, 0, 255), 2)
 
     # Crop and resize
-    cropped, _ = crop_square(equalized, rect)
+    cropped, _, coords_cropped = crop_square_and_coords(equalized, rect, kp_coord_uv_proj)
+    coords_cropped *= np.array([88.0/cropped.shape[0], 88.0/cropped.shape[1]])
     resized = cv2.resize(cropped, (88, 88))
 
+    # Print out keypoints
+    wrist = coords_cropped[0]
+    thumb = coords_cropped[1:5]
+    index = coords_cropped[5:9]
+    middl = coords_cropped[9:13]
+    rring = coords_cropped[13:17]
+    pinky = coords_cropped[17:]
+
+    # print('Wrist:\n{}'.format(wrist))
+    # print('Thumb:\n{}'.format(thumb))
+    # print('Index:\n{}'.format(index))
+    # print('Middle:\n{}'.format(middl))
+    # print('Ring:\n{}'.format(rring))
+    # print('Pinky:\n{}'.format(pinky))
+
     # UNCOMMENT to save samples
-    np.save(os.path.join(set, 'MNIST-style', '%.5d.npy' % sample_id), resized)
+    # np.save(os.path.join(set, 'MNIST-style', '%.5d.npy' % sample_id), resized)
+    np.save(os.path.join(set, 'MNIST-style-coords', '%.5d.npy' % sample_id), coords_cropped)
 
     # Filter samples that aren't nearly square
     # total += 1
@@ -141,16 +180,16 @@ for sample_id, anno in anno_all.items():
     #     print(skipped/total)
     #     continue
 
-    # Display everything
-    #cv2.imshow('image; bounded', image)
-    #cv2.imshow('cropped', resized)
-
     # Compute average height and width
     # avg_width.append(cropped.shape[1]) ~ 91.4
     # avg_height.append(cropped.shape[0]) ~ 96.7
     # print('{}'.format(sum(avg_width)/len(avg_width)) + '    ' + '{}'.format(sum(avg_height)/len(avg_height)))
 
-    # ch = cv2.waitKey(1)
+    # Display everything
+    # cv2.imshow('image; bounded', image)
+    # cv2.imshow('cropped', resized)
+
+    # ch = cv2.waitKey(0)
     # if ch == 27:
     #     break
 
