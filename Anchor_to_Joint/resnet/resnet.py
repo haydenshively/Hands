@@ -14,7 +14,7 @@ class ResNetBlock(layers.Layer):
         for _ in range(1, block_count):
             self.blocks.append(block(filters_in[0], filters_out, dilation=dilation))
 
-    def __call__(self, inputs):
+    def call(self, inputs):
         x = self.block1(inputs)
         for block in self.blocks: x = block(x)
         return x
@@ -34,7 +34,7 @@ class ResNet(Model):
         self.block3 = ResNetBlock(block, block_counts[2], filters_in, 256, stride=(2,2))
         self.block4 = ResNetBlock(block, block_counts[3], filters_in, 512, dilation=2)
 
-    def __call__(self, inputs):
+    def call(self, inputs):
         x = self.pad1(inputs)
         x = self.conv1(x)
         x = bn()(x)

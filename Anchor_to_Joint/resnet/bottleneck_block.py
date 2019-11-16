@@ -13,7 +13,7 @@ class BottleneckBlock(layers.Layer):
 
         self.should_use_shortcut = (filters_in != filters_out*4) or (stride is not (1,1))
 
-    def __call__(self, inputs):
+    def call(self, inputs):
         x = self.conv1(inputs)
         x = bn()(x)
         x = relu()(x)

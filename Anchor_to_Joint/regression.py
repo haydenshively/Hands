@@ -18,7 +18,7 @@ class Regression(Model):
 
         self.reshape = layers.Reshape((-1, self.num_classes, self.output_dims))
 
-    def __call__(self, inputs):
+    def call(self, inputs):
         x = self.conv1(inputs)
         x = bn()(x)
         x = relu()(x)
