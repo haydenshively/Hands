@@ -16,7 +16,7 @@ class Regression(Model):
         self.conv4 = layers.Conv2D(filters=self.feature_size, kernel_size=3, padding='same', kernel_initializer='glorot_normal')
         self.conv5 = layers.Conv2D(filters=self.num_anchors*self.num_classes*self.output_dims, kernel_size=3, padding='same', kernel_initializer='glorot_normal')
 
-        self.reshape = layers.Reshape((-1, self.num_classes, self.output_dims))
+        self.reshape = layers.Reshape((-1, self.num_anchors, self.num_classes, self.output_dims))
 
     def call(self, inputs):
         x = self.conv1(inputs)

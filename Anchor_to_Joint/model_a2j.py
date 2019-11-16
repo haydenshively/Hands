@@ -1,3 +1,4 @@
+from tensorflow.keras import backend as K
 from tensorflow.keras import Model, layers
 from util import *
 
@@ -24,50 +25,23 @@ class A2J(Model):
         super(A2J, self).__init__()
 
         self.backbone = ResNet(BottleneckBlock, [3,4,6,3])
-        self.in_plane_regression = InPlaneRegression(num_classes=num_classes)
-        self.depth_regression = DepthRegression(num_classes=num_classes)
-        self.anchor_proposal = AnchorProposal(num_classes=num_classes)
+        self.predict_offset = InPlaneRegression(num_classes=num_classes)
+        self.predict_depth = DepthRegression(num_classes=num_classes)
+        self.response_map = AnchorProposal(num_classes=num_classes)
 
     def call(self, inputs):
         x3, x4 = self.backbone(inputs)
-        coords = self.in_plane_regression(x4)
-        depth = self.depth_regression(x4)
-        anchors = self.anchor_proposal(x3)
+        offsets = self.predict_offset(x4)
+        depths = self.predict_depth(x4)
+        responses = self.response_map(x3)
 
-        return anchors, coords, depth
+        range = K.range(0, 4, 1)
+        anchor_pos = layers.Concatenate(K.meshgrid(range, range), axis=2)
+        joint_pos = layers.Add()([anchor_pos, offsets])
+        joint_pos = layers.Multiply()([joint_pos, responses])
 
+        anchor_heatmap = layers.Multiply()([anchor_pos, responses])
 
-# class A2J(object):
-#     def __init__(self, input_shape, num_classes, predict_3D = True):
-#         self.input_shape = input_shape
-#         self.num_classes = num_classes
-#         self.predict_3D = predict_3D
-#
-#     def build(self):
-#         inputs = layers.Input(shape = self.input_shape)
-#         backbone = ResNet(BottleneckBlock, [3,4,6,3])
-#         x3, x4 = backbone(inputs)
-#
-#         if self.predict_3D:
-#             anchor_proposal_out = AnchorProposal(num_classes=self.num_classes)(x3)
-#             in_plane_regression_out = InPlaneRegression(num_classes=self.num_classes)(x4)
-#             depth_regression_out = DepthRegression(num_classes=self.num_classes)(x4)
-#
-#             self.model = models.Model(inputs = inputs, outputs = [anchor_proposal_out, in_plane_regression_out, depth_regression_out])
-#
-#         else:
-#             anchor_proposal = A2J_AnchorProposal(x3, num_classes=self.num_classes)
-#             anchor_proposal.build()
-#
-#             in_plane_regression = A2J_InPlaneRegression(x4, num_classes=self.num_classes)
-#             in_plane_regression.build()
-#
-#             self.model = models.Model(inputs = inputs, outputs = [anchor_proposal.outputs, in_plane_regression.outputs])
-#
-#
-#     def compile(self):
-#         pass
-input_shape = (256, 256, 1)
-inputs = layers.Input(shape = input_shape)
-a2j = A2J(15)
-outputs = A2J(inputs)
+        depths = layers.Multiply()([depths, responses])
+
+        return joint_pos, depths, anchor_heatmap
