@@ -1,3 +1,12 @@
+from tensorflow.keras import layers
+
+def bn():
+    return layers.BatchNormalization(axis=3)
+def relu():
+    return layers.ReLU()
+
+
+
 import os
 import numpy as np
 
