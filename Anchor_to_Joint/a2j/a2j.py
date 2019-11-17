@@ -61,8 +61,8 @@ from resnet.resnet import resnet
 """Functional style"""
 def a2j(input_tensor, num_classes):
     x3, x4 = resnet(input_tensor, bottleneck_block, [3,4,6,3])
+    responses = anchor_proposal(x3, num_classes=num_classes)
     offsets = in_plane_regression(x4, num_classes=num_classes)
     depths = depth_regression(x4, num_classes=num_classes)
-    responses = anchor_proposal(x3, num_classes=num_classes)
 
-    return post_process(offsets, depths, responses)
+    return post_process(responses, offsets, depths)

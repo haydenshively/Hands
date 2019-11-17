@@ -36,17 +36,20 @@ def replicate(anchor_cluster, image_size, feature_map_size):
     all_anchors = anchor_cluster.reshape((1, A, 2)) + shifts.reshape((1, K, 2)).transpose((1, 0, 2))
     return all_anchors.reshape((A*K, 2))
 
-def post_process(offsets, depths, responses):
+def post_process(responses, offsets, depths):
     anchor_cluster = generate_anchor_cluster([256,256], [16,16])
     anchor_coords = replicate(anchor_cluster, [256,256], [16,16])
     anchor_coords = K.constant(np.expand_dims(anchor_coords, axis=1))
 
     responses = layers.Activation('softmax')(responses)
     anchor_heatmap = layers.Lambda(lambda x: x*anchor_coords)(responses)
+    anchor_heatmap = layers.Lambda(lambda x: K.sum(x, axis=1))(anchor_heatmap)
 
     joint_coords = layers.Lambda(lambda x: x+anchor_coords)(offsets)
     joint_coords = layers.Multiply()([joint_coords, responses])
+    joint_coords = layers.Lambda(lambda x: K.sum(x, axis=1))(joint_coords)
 
     depths = layers.Multiply()([depths, responses])
+    depths = layers.Lambda(lambda x: K.sum(x, axis=1))(depths)
 
     return joint_coords, depths, anchor_heatmap
