@@ -35,3 +35,23 @@ class Regression(Model):
         x = self.conv5(x)
         x = self.reshape(x)
         return x
+
+"""Functional style"""
+def regression(input_tensor, output_dims, feature_size=256, num_anchors=16, num_classes=15):
+    x = layers.Conv2D(filters=feature_size, kernel_size=3, padding='same', kernel_initializer='glorot_normal')(input_tensor)
+    x = bn()(x)
+    x = relu()(x)
+    x = layers.Conv2D(filters=feature_size, kernel_size=3, padding='same', kernel_initializer='glorot_normal')(x)
+    x = bn()(x)
+    x = relu()(x)
+    x = layers.Conv2D(filters=feature_size, kernel_size=3, padding='same', kernel_initializer='glorot_normal')(x)
+    x = bn()(x)
+    x = relu()(x)
+    x = layers.Conv2D(filters=feature_size, kernel_size=3, padding='same', kernel_initializer='glorot_normal')(x)
+    x = bn()(x)
+    x = relu()(x)
+
+    x = layers.Conv2D(filters=num_anchors*num_classes*output_dims, kernel_size=3, padding='same', kernel_initializer='glorot_normal')(x)
+    x = layers.Reshape((x.shape[1], x.shape[2], num_anchors, num_classes, output_dims))(x)
+    x = layers.Reshape((x.shape[1]*x.shape[2]*num_anchors, num_classes, output_dims))(x)
+    return x
