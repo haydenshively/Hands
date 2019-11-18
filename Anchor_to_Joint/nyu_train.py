@@ -6,7 +6,7 @@ from a2j.losses import *
 from nyu_preprocessing import NYU
 
 if __name__ == '__main__':
-    NYU_DIR = '/mnt/sshfs/hdd/datasets/hands/nyu_hand_dataset/train'
+    NYU_DIR = '/mnt/sshfs_cais/hdd/datasets/hands/nyu_hand_dataset/train'
 
     generator = NYU(NYU_DIR, desired_size=256, batch_size=8)
 

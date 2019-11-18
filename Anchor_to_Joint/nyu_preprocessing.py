@@ -19,7 +19,7 @@ def num_pngs_in(dir):
     return len(fnmatch.filter(os.listdir(dirpath), '*.png'))
 
 def characteristics(dir):
-    files = next(os.walk(dir))[2]
+    files = os.listdir(dir)
     counts = {}
 
     for file in files:
