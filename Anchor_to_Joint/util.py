@@ -38,7 +38,7 @@ def replicate(anchor_cluster, image_size, feature_map_size):
 
 def post_process(responses, offsets, depths):
     anchor_cluster = generate_anchor_cluster([256,256], [16,16])
-    anchor_coords = replicate(anchor_cluster, [256,256], [16,16])
+    anchor_coords = replicate(anchor_cluster, [256,256], [16,16])/256.0
     anchor_coords = K.constant(np.expand_dims(anchor_coords, axis=1))
 
     responses = layers.Activation('softmax')(responses)

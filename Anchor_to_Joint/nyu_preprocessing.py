@@ -14,7 +14,6 @@ coeff_y = 587.075073
 # factor_xz = 1.08836710
 # factor_yz = 0.817612648
 
-
 def num_files_in(dir):
     return len(next(os.walk(dir))[2])
 
@@ -64,10 +63,11 @@ class NYU(Sequence):
         self.batch_size = batch_size
 
     def image_name_at(self, index):
+        index += 1
         if index >= self.depth_counts[self.camera_id]:
             self.camera_id += 1
         index -= self.depth_counts[self.camera_id - 1]
-        return 'depth_' + '%d_%07d' % (self.camera_id, index)
+        return 'depth_' + '%d_%07d.png' % (self.camera_id, index)
 
     def imread(self, path):
         x = tf.io.read_file(path)
@@ -85,28 +85,29 @@ class NYU(Sequence):
         Y_centers = Y[:,:,:2].mean(axis = 1)
         Y_sizes = Y[:,:,:2].ptp(axis = 1).max(axis = 1)/2.0 + 5.0#5 pixel padding on each side
 
-        Y[:,:,:2] -= (Y_centers[:,np.newaxis] - Y_sizes[:,np.newaxis])
-        Y[:,:,:2] *= self.desired_size/Y_sizes
+        Y[:,:,:2] -= (Y_centers - Y_sizes[:,np.newaxis])[:,np.newaxis]
+        Y[:,:,:2] /= Y_sizes[:,np.newaxis,np.newaxis]
+        # Y[:,:,:2] *= self.desired_size
 
-        # x = cv2.imread(os.path.join(self.dir, self.image_name_at(start)), -1)
-        x = self.imread(os.path.join(self.dir, self.image_name_at(start)))
-        X = np.zeros((self.batch_size, x.shape[0], x.shape[1], 1))
+        Y[:,:,2] -= Y[:,:,2].min(axis = 1)[:,np.newaxis]
+        Y[:,:,2] /= Y[:,:,2].max(axis = 1)[:,np.newaxis]
 
-        for i in range(start, end):
-            # x = cv2.imread(os.path.join(self.dir, self.image_name_at(i)), -1)
-            x = self.imread(os.path.join(self.dir, self.image_name_at(start)))
+        X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1))
+
+        for i in range(0, self.batch_size):
+            x = self.imread(os.path.join(self.dir, self.image_name_at(start+i)))
             x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)
 
             center = tuple(Y_centers[i].astype('uint32'))
             size = int(Y_sizes[i])
             cropped = x[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
-            resized = cv2.resize(cropped, (self.desired_size,)*2)
-
+            resized = tf.image.resize(x[:,:,np.newaxis], (self.desired_size,)*2, antialias=True)
+            resized = resized.numpy()
             # cv2.imshow('X', resized.astype('uint8'))
             # cv2.waitKey(0)
             # print(Y[i])
 
-            X[i,:,:,0] = resized.astype('float')/255.0
+            X[i] = resized.astype('float')/resized.max()
 
         Y_split = Y[:,:,:2], Y[:,:,2], Y[:,:,:2]
 
