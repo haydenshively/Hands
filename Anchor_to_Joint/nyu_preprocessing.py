@@ -51,9 +51,6 @@ class NYU(Sequence):
         for i in range(len(file_counts['depth'])):
             self.depth_counts.append(self.depth_counts[-1] + file_counts['depth'][str(i+1)])
 
-        print(file_counts)
-        print(file_counts['depth'])
-
         self.camera_id = 1
         self.desired_size=desired_size
 
@@ -62,7 +59,7 @@ class NYU(Sequence):
         self.joint_coords = joint_coords.reshape(-1, *joint_coords.shape[2:])
 
         self.dir = dir
-        self.sample_count = self.joint_coords[0]
+        self.sample_count = self.joint_coords.shape[0]
         self.batch_size = batch_size
 
     def image_name_at(self, index):
