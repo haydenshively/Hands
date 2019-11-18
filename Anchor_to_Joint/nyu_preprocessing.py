@@ -82,8 +82,8 @@ class NYU(Sequence):
         end = (idx + 1) * self.batch_size
 
         Y = self.joint_coords[start:end]
-        Y_centers = Y.mean(axis = 1)
-        Y_sizes = Y.ptp(axis = 1).max(axis = 1)/2.0 + 5.0#5 pixel padding on each side
+        Y_centers = Y[:,:,:2].mean(axis = 1)
+        Y_sizes = Y[:,:,:2].ptp(axis = 1).max(axis = 1)/2.0 + 5.0#5 pixel padding on each side
 
         Y[:,:,:2] -= (Y_centers - Y_sizes)
         Y[:,:,:2] *= self.desired_size/Y_sizes
