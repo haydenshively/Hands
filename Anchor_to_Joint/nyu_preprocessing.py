@@ -1,9 +1,10 @@
 import os
-import cv2
+# import cv2
 import math
 import fnmatch
 import numpy as np
 import scipy.io as sio
+import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 
 half_res_x = 640/2.0
@@ -68,6 +69,11 @@ class NYU(Sequence):
         index -= self.depth_counts[self.camera_id - 1]
         return 'depth_' + '%d_%07d' % (self.camera_id, index)
 
+    def imread(self, path):
+        x = tf.io.read_file(path)
+        x = tf.io.decode_png(x, channels=3, dtype=tf.dtypes.uint16)
+        return x.numpy()
+
     def __len__(self):
         return math.ceil(self.sample_count / self.batch_size)
 
@@ -82,11 +88,13 @@ class NYU(Sequence):
         Y[:,:,:2] -= (Y_centers - Y_sizes)
         Y[:,:,:2] *= self.desired_size/Y_sizes
 
-        x = cv2.imread(os.path.join(self.dir, self.image_name_at(start)), -1)
+        # x = cv2.imread(os.path.join(self.dir, self.image_name_at(start)), -1)
+        x = self.imread(os.path.join(self.dir, self.image_name_at(start)))
         X = np.zeros((self.batch_size, x.shape[0], x.shape[1], 1))
 
         for i in range(start, end):
-            x = cv2.imread(os.path.join(self.dir, self.image_name_at(i)), -1)
+            # x = cv2.imread(os.path.join(self.dir, self.image_name_at(i)), -1)
+            x = self.imread(os.path.join(self.dir, self.image_name_at(start)))
             x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)
 
             center = tuple(Y_centers[i].astype('uint32'))
@@ -94,9 +102,9 @@ class NYU(Sequence):
             cropped = x[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
             resized = cv2.resize(cropped, (self.desired_size,)*2)
 
-            cv2.imshow('X', resized.astype('uint8'))
-            cv2.waitKey(0)
-            print(Y[i])
+            # cv2.imshow('X', resized.astype('uint8'))
+            # cv2.waitKey(0)
+            # print(Y[i])
 
             X[i,:,:,0] = resized.astype('float')/255.0
 

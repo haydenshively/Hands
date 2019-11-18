@@ -8,7 +8,7 @@ from nyu_preprocessing import NYU
 if __name__ == '__main__':
     NYU_DIR = '/mnt/sshfs_cais/hdd/datasets/hands/nyu_hand_dataset/train'
 
-    generator = NYU(NYU_DIR, desired_size=256, batch_size=8)
+    generator = NYU(NYU_DIR, desired_size=256, batch_size=4)
 
     from tensorflow.keras.optimizers import Adam
     optimizer = Adam(lr = 0.00035)
