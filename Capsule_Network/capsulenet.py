@@ -1,18 +1,18 @@
 """
 Keras implementation of CapsNet in Hinton's paper Dynamic Routing Between Capsules.
 The current version maybe only works for TensorFlow backend. Actually it will be straightforward to re-write to TF code.
-Adopting to other backends should be easy, but I have not tested this. 
+Adopting to other backends should be easy, but I have not tested this.
 
 Usage:
        python capsulenet.py
        python capsulenet.py --epochs 50
        python capsulenet.py --epochs 50 --routings 3
        ... ...
-       
+
 Result:
     Validation accuracy > 99.5% after 20 epochs. Converge to 99.66% after 50 epochs.
     About 110 seconds per epoch on a single GTX1070 GPU card
-    
+
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
 """
 
@@ -50,7 +50,7 @@ def CapsNet(input_shape, n_class, routings):
     primarycaps = PrimaryCap(conv4, dim_capsule=16, n_channels=16, kernel_size=15, strides=2, padding='valid')
 
     # Layer 3: Capsule layer. Routing algorithm works here.
-    digitcaps = CapsuleLayer(num_capsule=21, dim_capsule=2, routings=4, name='digitcaps')(primarycaps)
+    digitcaps = CapsuleLayer(num_capsule=n_class, dim_capsule=3, routings=4, name='digitcaps')(primarycaps)
 
     train_model = models.Model([x], [digitcaps])
     return train_model
