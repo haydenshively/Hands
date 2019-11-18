@@ -29,7 +29,6 @@ if __name__ == '__main__':
               epochs = 34,
               verbose = 1,
               steps_per_epoch = generator.__len__(),
-              validation_split = 0.01,
               shuffle = True,
               workers = 4,
               use_multiprocessing = True)
