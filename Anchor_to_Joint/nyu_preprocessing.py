@@ -1,6 +1,8 @@
 import os
 import cv2
+import math
 import fnmatch
+import numpy as np
 import scipy.io as sio
 from tensorflow.keras.utils import Sequence
 
@@ -48,6 +50,9 @@ class NYU(Sequence):
         self.depth_counts = [0]
         for i in range(len(file_counts['depth'])):
             self.depth_counts.append(self.depth_counts[-1] + file_counts['depth'][str(i+1)])
+
+        print(file_counts)
+        print(file_counts['depth'])
 
         self.camera_id = 1
         self.desired_size=desired_size
