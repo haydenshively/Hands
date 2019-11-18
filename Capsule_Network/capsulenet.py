@@ -18,10 +18,8 @@ Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com
 
 import numpy as np
 import tensorflow as tf
-from keras import layers, models, optimizers, losses
-from keras import backend as K
-from keras.utils import to_categorical
-import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models, optimizers, losses
+from tensorflow.keras import backend as K
 from utils import combine_images
 #from PIL import Image
 from capsulelayers import CapsuleLayer, PrimaryCap, Length, Mask
