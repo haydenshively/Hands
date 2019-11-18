@@ -85,7 +85,7 @@ class NYU(Sequence):
         Y_centers = Y[:,:,:2].mean(axis = 1)
         Y_sizes = Y[:,:,:2].ptp(axis = 1).max(axis = 1)/2.0 + 5.0#5 pixel padding on each side
 
-        Y[:,:,:2] -= (Y_centers - Y_sizes)
+        Y[:,:,:2] -= (Y_centers - Y_sizes[:,np.newaxis])
         Y[:,:,:2] *= self.desired_size/Y_sizes
 
         # x = cv2.imread(os.path.join(self.dir, self.image_name_at(start)), -1)
