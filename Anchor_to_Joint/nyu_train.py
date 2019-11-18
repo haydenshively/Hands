@@ -3,13 +3,12 @@ from tensorflow.keras import layers, models
 from a2j.a2j import a2j#A2J
 from a2j.losses import *
 
+from nyu_preprocessing import NYU
+
 if __name__ == '__main__':
-    input_images = None
-    ground_truth_joint_pos = None
-    ground_truth_joint_depth = None
+    NYU_DIR = '/mnt/sshfs/hdd/datasets/hands/nyu_hand_dataset/train'
 
-
-
+    generator = NYU(NYU_DIR, desired_size=256, batch_size=8)
 
     from tensorflow.keras.optimizers import Adam
     optimizer = Adam(lr = 0.00035)
@@ -26,10 +25,11 @@ if __name__ == '__main__':
 
     model.compile(optimizer, loss = losses, loss_weights = loss_weights, metrics = ['accuracy'])
 
-    model.fit(x = input_images,
-            y = [ground_truth_joint_pos, ground_truth_joint_depth, ground_truth_joint_pos],
-            batch_size = 8,
-            epochs = 34,
-            verbose = 1,
-            validation_split = 0.01,
-            shuffle = True)
+    model.fit(generator,
+              epochs = 34,
+              verbose = 1,
+              steps_per_epoch = generator.__len__(),
+              validation_split = 0.01,
+              shuffle = True,
+              workers = 4,
+              use_multiprocessing = True)
