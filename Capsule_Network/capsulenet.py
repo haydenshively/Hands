@@ -49,6 +49,9 @@ def CapsNet(input_shape, n_class, routings):
     # Layer 2: Conv2D layer with `squash` activation, then reshape to [None, num_capsule, dim_capsule]
     primarycaps = PrimaryCap(conv4, dim_capsule=16, n_channels=16, kernel_size=15, strides=2, padding='valid')
 
+    print('primary caps')
+    print(primarycaps.shape)
+
     # Layer 3: Capsule layer. Routing algorithm works here.
     digitcaps = CapsuleLayer(num_capsule=n_class, dim_capsule=3, routings=4, name='digitcaps')(primarycaps)
 
