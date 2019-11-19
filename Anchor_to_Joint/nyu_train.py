@@ -11,17 +11,17 @@ if __name__ == '__main__':
     generator = NYU(NYU_DIR, desired_size=256, batch_size=16)
 
     from tensorflow.keras.optimizers import Adam
-    optimizer = Adam(lr = 0.00035)
+    optimizer = Adam(lr = 0.035)
 
     checkpoint = callbacks.ModelCheckpoint('model.h5', monitor='loss', verbose=1, save_best_only=True, mode='auto', period=1)
 
     inputs = layers.Input(shape = (256, 256, 1))
     outputs = a2j(inputs, 36)
     model = models.Model(inputs=inputs, outputs=outputs)
-    print(model.summary())
+    #model.summary()
 
-    tau1 = 1.0/3.0
-    tau2 = 1.0
+    tau1 = 1.0/3.0/10.0
+    tau2 = 1.0/10.0
     losses = [smoothL1(tau1), smoothL1(tau2), smoothL1(tau1)]
     loss_weights = [1.0, 1.0, 1.0/3.0]
 

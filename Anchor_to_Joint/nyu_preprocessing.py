@@ -64,7 +64,7 @@ class NYU(Sequence):
 
     def image_name_at(self, index):
         index += 1
-        if index >= self.depth_counts[self.camera_id]:
+        if index > self.depth_counts[self.camera_id]:
             self.camera_id += 1
         index -= self.depth_counts[self.camera_id - 1]
         return 'depth_' + '%d_%07d.png' % (self.camera_id, index)
@@ -95,8 +95,12 @@ class NYU(Sequence):
         X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1))
 
         for i in range(0, self.batch_size):
-            x = self.imread(os.path.join(self.dir, self.image_name_at(start+i)))
-            x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)
+            try:
+                x = self.imread(os.path.join(self.dir, self.image_name_at(start+i)))
+                x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)
+            except:
+                print('failed to find image {}'.format(start+i))
+                x = np.zeros((self.desired_size, self.desired_size, 1), dtype='uint16')
 
             center = tuple(Y_centers[i].astype('uint32'))
             size = int(Y_sizes[i])

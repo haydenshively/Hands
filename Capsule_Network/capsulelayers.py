@@ -10,6 +10,7 @@ Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com
 import tensorflow as tf
 from tensorflow.keras import initializers, layers
 from tensorflow.keras import backend as K
+from tensorflow.compat.v1.keras.backend import batch_dot
 
 
 class Length(layers.Layer):
@@ -106,15 +107,15 @@ class CapsuleLayer(layers.Layer):
 
     def build(self, input_shape):
         assert len(input_shape) >= 3, "The input Tensor should have shape=[None, input_num_capsule, input_dim_capsule]"
-        self.input_num_capsule = input_shape[1]
-        self.input_dim_capsule = input_shape[2]
+        self.input_num_capsule = 36864
+        self.input_dim_capsule = 16
 
         # Transform matrix
-        self.W = self.add_weight(shape=[self.num_capsule, self.input_num_capsule,
-                                        self.dim_capsule, self.input_dim_capsule],
+        self.W = self.add_weight(shape=[self.num_capsule, self.input_num_capsule, self.input_dim_capsule, self.dim_capsule],
                                  initializer=self.kernel_initializer,
                                  name='W')
 
+        self.W_batch = tf.broadcast_to(self.W, [input_shape[0], *self.W.shape])
         self.built = True
 
     def call(self, inputs, training=None):
@@ -136,7 +137,9 @@ class CapsuleLayer(layers.Layer):
         # Regard the first two dimensions as `batch` dimension,
         # then matmul: [input_dim_capsule] x [dim_capsule, input_dim_capsule]^T -> [dim_capsule].
         # inputs_hat.shape = [None, num_capsule, input_num_capsule, dim_capsule]
-        inputs_hat = K.map_fn(lambda x: K.batch_dot(x, self.W, [2, 3]), elems=inputs_tiled)
+        print('W_batch')
+        print(self.W_batch.shape)
+        inputs_hat = layers.Lambda(lambda x: K.batch_dot(x, self.W_batch))(inputs_tiled)
         print('inputs_hat')
         print(inputs_hat.shape)
 
@@ -159,7 +162,7 @@ class CapsuleLayer(layers.Layer):
             # The first two dimensions as `batch` dimension,
             # then matmal: [input_num_capsule] x [input_num_capsule, dim_capsule] -> [dim_capsule].
             # outputs.shape=[None, num_capsule, dim_capsule]
-            outputs = squash(K.batch_dot(c, inputs_hat, [2, 2]))  # [None, 10, 16]
+            outputs = squash(batch_dot(c, inputs_hat, [2, 2]))  # [None, 10, 16]
             print('outputs')
             print(outputs.shape)
 
@@ -169,7 +172,7 @@ class CapsuleLayer(layers.Layer):
                 # The first two dimensions as `batch` dimension,
                 # then matmal: [dim_capsule] x [input_num_capsule, dim_capsule]^T -> [input_num_capsule].
                 # b.shape=[batch_size, num_capsule, input_num_capsule]
-                b += K.batch_dot(outputs, inputs_hat, [2, 3])
+                b += batch_dot(outputs, inputs_hat, [2, 3])
         # End: Routing algorithm -----------------------------------------------------------------------#
 
         return outputs
@@ -197,7 +200,7 @@ def PrimaryCap(inputs, dim_capsule, n_channels, kernel_size, strides, padding):
     """
     output = layers.Conv2D(filters=dim_capsule*n_channels, kernel_size=kernel_size, strides=strides, padding=padding,
                            name='primarycap_conv2d')(inputs)
-    outputs = layers.Reshape((-1, dim_capsule), name='primarycap_reshape')(output)
+    outputs = layers.Reshape((output.shape[1]*output.shape[2]*n_channels, dim_capsule), name='primarycap_reshape')(output)
     return layers.Lambda(squash, name='primarycap_squash')(outputs)
 
 

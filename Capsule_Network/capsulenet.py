@@ -36,7 +36,7 @@ def CapsNet(input_shape, n_class, routings):
     :return: Two Keras Models, the first one used for training, and the second one for evaluation.
             `eval_model` can also be used for training.
     """
-    x = layers.Input(shape=input_shape)
+    x = layers.Input(shape=input_shape[1:], batch_size=input_shape[0])
 
     # Layer 1: Just a conventional Conv2D layer
     conv1 = layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='valid', activation='relu', name='conv1')(x)
