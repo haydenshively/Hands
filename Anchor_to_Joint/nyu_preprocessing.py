@@ -80,6 +80,7 @@ class NYU(Sequence):
     def __getitem__(self, idx):
         start = idx * self.batch_size
         end = (idx + 1) * self.batch_size
+        end = min(end, self.sample_count)
 
         Y = self.joint_coords[start:end]
         Y_centers = Y[:,:,:2].mean(axis = 1)
@@ -94,7 +95,7 @@ class NYU(Sequence):
 
         X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1))
 
-        for i in range(0, self.batch_size):
+        for i in range(0, end-start):
             try:
                 x = self.imread(os.path.join(self.dir, self.image_name_at(start+i)))
                 x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)

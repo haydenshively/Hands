@@ -18,9 +18,9 @@ Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import layers, models, optimizers, losses
-from tensorflow.keras import backend as K
-from utils import combine_images
+from keras import layers, models, optimizers, losses
+from keras import backend as K
+#from utils import combine_images
 #from PIL import Image
 from capsulelayers import CapsuleLayer, PrimaryCap, Length, Mask
 
@@ -36,16 +36,18 @@ def CapsNet(input_shape, n_class, routings):
     :return: Two Keras Models, the first one used for training, and the second one for evaluation.
             `eval_model` can also be used for training.
     """
-    x = layers.Input(shape=input_shape[1:], batch_size=input_shape[0])
+    x = layers.Input(shape=input_shape)
 
     # Layer 1: Just a conventional Conv2D layer
-    conv1 = layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='valid', activation='relu', name='conv1')(x)
-    conv2 = layers.Conv2D(filters=64, kernel_size=9, strides=1, padding='valid', activation='relu', name='conv2')(conv1)
-    conv3 = layers.Conv2D(filters=128, kernel_size=9, strides=1, padding='valid', activation='relu', name='conv3')(conv2)
-    conv4 = layers.Conv2D(filters=256, kernel_size=3, strides=1, padding='valid', activation='relu', name='conv4')(conv3)
+    conv1 = layers.Conv2D(filters=16, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv1')(x)
+    conv2 = layers.Conv2D(filters=32, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv2')(conv1)
+    conv3 = layers.Conv2D(filters=64, kernel_size=3, strides=1, padding='valid', activation='relu', name='conv3')(conv2)
+    conv4 = layers.Conv2D(filters=128, kernel_size=3, strides=1, padding='valid', activation='relu', name='conv4')(conv3)
+    conv5 = layers.Conv2D(filters=256, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv5')(conv4)
+    #conv6 = layers.Conv2D(filters=256, kernel_size=3, strides=2, padding='valid', activation='relu', name='conv6')(conv5)
 
     # Layer 2: Conv2D layer with `squash` activation, then reshape to [None, num_capsule, dim_capsule]
-    primarycaps = PrimaryCap(conv4, dim_capsule=16, n_channels=16, kernel_size=15, strides=2, padding='valid')
+    primarycaps = PrimaryCap(conv5, dim_capsule=16, n_channels=16, kernel_size=15, strides=2, padding='valid')
 
     print('primary caps')
     print(primarycaps.shape)

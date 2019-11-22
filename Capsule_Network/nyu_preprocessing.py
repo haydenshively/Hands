@@ -5,7 +5,7 @@ import fnmatch
 import numpy as np
 import scipy.io as sio
 import tensorflow as tf
-from tensorflow.keras.utils import Sequence
+from keras.utils import Sequence
 
 half_res_x = 640/2.0
 half_res_y = 480/2.0
@@ -62,6 +62,9 @@ class NYU(Sequence):
         self.sample_count = self.joint_coords.shape[0]
         self.batch_size = batch_size
 
+        self.dim = [desired_size, desired_size, 1]
+        self.ndim = 3
+
     def image_name_at(self, index):
         index += 1
         if index > self.depth_counts[self.camera_id]:
@@ -80,6 +83,7 @@ class NYU(Sequence):
     def __getitem__(self, idx):
         start = idx * self.batch_size
         end = (idx + 1) * self.batch_size
+        end = min(end, self.sample_count)
 
         Y = self.joint_coords[start:end]
         Y_centers = Y[:,:,:2].mean(axis = 1)
@@ -94,7 +98,7 @@ class NYU(Sequence):
 
         X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1))
 
-        for i in range(0, self.batch_size):
+        for i in range(0, Y.shape[0]):
             try:
                 x = self.imread(os.path.join(self.dir, self.image_name_at(start+i)))
                 x = x[:,:,2].astype('uint16') + np.left_shift(x[:,:,1].astype('uint16'), 8)
@@ -110,6 +114,6 @@ class NYU(Sequence):
             # cv2.waitKey(0)
             # print(Y[i])
 
-            X[i] = resized.astype('float')/resized.max()
+            X[i] = resized.astype('float')
 
-        return X, Y
+        return X/X.max(), Y
