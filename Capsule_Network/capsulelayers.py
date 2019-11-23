@@ -7,9 +7,9 @@ uncommenting them and commenting their counterparts.
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
 """
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 import tensorflow as tf
-from keras import initializers, layers
+from tensorflow.keras import initializers, layers
 
 
 class Length(layers.Layer):
@@ -106,13 +106,19 @@ class CapsuleLayer(layers.Layer):
 
     def build(self, input_shape):
         assert len(input_shape) >= 3, "The input Tensor should have shape=[None, input_num_capsule, input_dim_capsule]"
-        self.input_num_capsule = input_shape[1]
-        self.input_dim_capsule = input_shape[2]
+        print(input_shape)
+        self.input_num_capsule = input_shape[1].value
+        self.input_dim_capsule = input_shape[2].value
         print("MADE IT HERE")
         # Transform matrix
-        self.W = self.add_weight(shape=[self.num_capsule, self.input_num_capsule,
-                                        self.dim_capsule, self.input_dim_capsule],
-                                 initializer=self.kernel_initializer,
+        W_init = tf.random_normal_initializer()
+        #self.W = tf.Variable(initial_value=W_init(shape=(self.num_capsule, self.input_num_capsule,
+        #                                                 self.dim_capsule, self.input_dim_capsule),
+        #                                                 dtype='float32'), trainable=True)
+        self.W = self.add_weight(shape=(self.num_capsule, self.input_num_capsule,
+                                        self.dim_capsule, self.input_dim_capsule),
+                                 initializer='random_normal',
+                                 trainable=True,
                                  name='W')
         print("DIDNT MAKE IT HERE")
         self.built = True
@@ -185,7 +191,8 @@ def PrimaryCap(inputs, dim_capsule, n_channels, kernel_size, strides, padding):
     """
     output = layers.Conv2D(filters=dim_capsule*n_channels, kernel_size=kernel_size, strides=strides, padding=padding,
                            name='primarycap_conv2d')(inputs)
-    outputs = layers.Reshape(target_shape=[-1, dim_capsule], name='primarycap_reshape')(output)
+    w, h = output.shape[1], output.shape[2]
+    outputs = layers.Reshape((w*h*n_channels, dim_capsule), name='primarycap_reshape')(output)
     return layers.Lambda(squash, name='primarycap_squash')(outputs)
 
 

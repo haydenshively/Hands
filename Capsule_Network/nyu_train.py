@@ -1,14 +1,23 @@
-from keras import backend as K
-from keras import layers, models, callbacks, optimizers
+from tensorflow.keras import backend as K
+from tensorflow.keras import layers, models, callbacks, optimizers
+
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+config.log_device_placement = True
+sess = tf.Session(config=config)
+#from tensorflow.keras.backend.tensorflow_backend import set_session
+K.set_session(sess)
+
 
 from capsulenet import CapsNet
 
 from nyu_preprocessing import NYU
 
 if __name__ == '__main__':
-    NYU_DIR = '/hdd/datasets/hands/nyu_hand_dataset/train'
+    NYU_DIR = '/mnt/sshfs_cais/hdd/datasets/hands/nyu_hand_dataset/train'
 
-    generator = NYU(NYU_DIR, desired_size=256, batch_size=16)
+    generator = NYU(NYU_DIR, desired_size=256, batch_size=8)
 
     #from tensorflow.keras.optimizers import Adam
     optimizer = optimizers.Adam(lr = 0.001)

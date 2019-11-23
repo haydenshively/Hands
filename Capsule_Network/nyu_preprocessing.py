@@ -5,7 +5,9 @@ import fnmatch
 import numpy as np
 import scipy.io as sio
 import tensorflow as tf
-from keras.utils import Sequence
+from tensorflow.keras.utils import Sequence
+from tensorflow.keras import backend as K
+
 
 half_res_x = 640/2.0
 half_res_y = 480/2.0
@@ -75,7 +77,7 @@ class NYU(Sequence):
     def imread(self, path):
         x = tf.io.read_file(path)
         x = tf.io.decode_png(x, channels=3, dtype=tf.dtypes.uint16)
-        return x.numpy()
+        return K.eval(x)#x.numpy()
 
     def __len__(self):
         return math.ceil(self.sample_count / self.batch_size)
@@ -96,7 +98,7 @@ class NYU(Sequence):
         Y[:,:,2] -= Y[:,:,2].min(axis = 1)[:,np.newaxis]
         Y[:,:,2] /= Y[:,:,2].max(axis = 1)[:,np.newaxis]
 
-        X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1))
+        X = np.zeros((self.batch_size, self.desired_size, self.desired_size, 1), dtype='float')
 
         for i in range(0, Y.shape[0]):
             try:
@@ -109,11 +111,12 @@ class NYU(Sequence):
             size = int(Y_sizes[i])
             cropped = x[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
             resized = tf.image.resize(x[:,:,np.newaxis], (self.desired_size,)*2)#, antialias=True)
-            resized = resized.numpy()
+            resized = K.eval(resized)
+            # resized = resized.numpy()
             # cv2.imshow('X', resized.astype('uint8'))
             # cv2.waitKey(0)
             # print(Y[i])
 
-            X[i] = resized.astype('float')
+            X[i] = resized
 
         return X/X.max(), Y
