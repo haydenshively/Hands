@@ -53,7 +53,7 @@ def CapsNet(input_shape, n_class, routings):
     print(primarycaps.shape)
 
     # Layer 3: Capsule layer. Routing algorithm works here.
-    digitcaps = CapsuleLayer(num_capsule=n_class, dim_capsule=3, routings=4, name='digitcaps')(primarycaps)
+    digitcaps = CapsuleLayer(num_capsule=n_class, dim_capsule=2, routings=4, name='digitcaps')(primarycaps)
 
     train_model = models.Model([x], [digitcaps])
     return train_model
