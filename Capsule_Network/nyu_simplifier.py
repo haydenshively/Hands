@@ -47,22 +47,15 @@ def world2pixel(x):
 
 desired_size=256
 dir = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train/'
-dir_out = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train_npy/'
+dir_out = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train_npy_n/'
 
 if __name__ == '__main__':
-    file_counts = characteristics(dir)
-
-    depth_counts = [0]
-    for i in range(len(file_counts['depth'])):
-        depth_counts.append(depth_counts[-1] + file_counts['depth'][str(i+1)])
-
-    camera_id = 1
+    files = os.listdir(dir)
+    files.sort()
 
     joint_data = sio.loadmat(os.path.join(dir, 'joint_data.mat'))
     joint_coords = joint_data['joint_uvd']
     joint_coords = joint_coords.reshape(-1, *joint_coords.shape[2:])
-
-    sample_count = joint_coords.shape[0]
 
     def imread_tf(path):
         x = tf.io.read_file(path)
@@ -81,53 +74,53 @@ if __name__ == '__main__':
         return cv2.resize(img, (size,)*2)
 
 
-    for i in range(sample_count):
+    successes = 0
+    for file in files:
+        if file.startswith('depth') and file.endswith('.png'):
 
-        Y = joint_coords[i]
-        # Y_center = Y[:,:2].mean(axis = 0)
-        # Y_size = Y[:,:2].std(axis = 0).max(axis = 0)*2.5
-        Y_size = Y[:,:2].ptp(axis = 0)/2.0
-        Y_topleft = Y[:,:2].min(axis = 0)
-        Y_center = Y_topleft + Y_size
-        Y_size = Y_size.max(axis = 0) + 10.0
+            Y = joint_coords[successes]
+            # Y_center = Y[:,:2].mean(axis = 0)
+            # Y_size = Y[:,:2].std(axis = 0).max(axis = 0)*2.5
+            Y_size = Y[:,:2].ptp(axis = 0)/2.0
+            Y_topleft = Y[:,:2].min(axis = 0)
+            Y_center = Y_topleft + Y_size
+            Y_size = Y_size.max(axis = 0) + 10.0
 
-        if (i+1) > depth_counts[camera_id]:
-            camera_id += 1
-        depthname = 'depth_' + '%d_%07d.png' % (camera_id, i+1-depth_counts[camera_id - 1])
+            # depth = imread_tf(os.path.join(dir, depthname))
+            depth = imread_cv(os.path.join(dir, file))
+            depth = np.left_shift(depth[:,:,1].astype('uint32'), 8) + depth[:,:,2].astype('uint32')
+            depth = 1 - depth.astype('float32')/depth.max()
 
-        # depth = imread_tf(os.path.join(dir, depthname))
-        depth = imread_cv(os.path.join(dir, depthname))
-        depth = np.left_shift(depth[:,:,1].astype('uint32'), 8) + depth[:,:,2].astype('uint32')
-        depth = 1 - depth.astype('float32')/depth.max()
+            center = tuple(Y_center.astype('uint32'))
+            size = int(Y_size)
+            cropped = depth[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
 
-        center = tuple(Y_center.astype('uint32'))
-        size = int(Y_size)
-        cropped = depth[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
+            # resized = resize_tf(cropped, desired_size)
+            resized = resize_cv(cropped, desired_size)
 
-        # resized = resize_tf(cropped, desired_size)
-        resized = resize_cv(cropped, desired_size)
+            recolored = (resized - resized.mean()) * min(1.2, 1.0/resized.ptp())
+            recolored = recolored - recolored.min()
 
-        recolored = (resized - resized.mean()) * min(1.2, 1.0/resized.ptp())
-        recolored = recolored - recolored.min()
+            Y[:,:2] -= Y_center - Y_size
+            Y[:,:2] *= desired_size/Y_size/2
 
-        Y[:,:2] -= Y_center - Y_size
-        Y[:,:2] *= desired_size/Y_size/2
+            Y[:,2] -= Y[:,2].min()
+            Y[:,2] /= Y[:,2].max()
 
-        Y[:,2] -= Y[:,2].min()
-        Y[:,2] /= Y[:,2].max()
+            out_name = file.split('.')[0].split('_')[-1] + '.npy'
+            np.save(os.path.join(dir_out, 'X', out_name), recolored)
+            np.save(os.path.join(dir_out, 'Y', out_name), Y)
 
-        out_name = '%07d.npy' % i
-        np.save(os.path.join(dir_out, 'X', out_name), recolored)
-        np.save(os.path.join(dir_out, 'Y', out_name), Y)
+            successes += 1
 
-        # gt_resized = recolored.copy()
-        # for j in range(Y.shape[0]):
-        #     joint = Y[j].astype('uint16')
-        #     cv2.circle(gt_resized, (joint[0], joint[1]), 3, color=(1,))
-        # cv2.imshow('gt_res', gt_resized)
+            # gt_resized = recolored.copy()
+            # for j in range(Y.shape[0]):
+            #     joint = Y[j].astype('uint16')
+            #     cv2.circle(gt_resized, (joint[0], joint[1]), 3, color=(1,))
+            # cv2.imshow('gt_res', gt_resized)
 
-        # cv2.imshow('depth', depth)
-        # cv2.imshow('cropped', cropped)
-        # cv2.imshow('resized', resized)
-        # cv2.imshow('recolored', recolored)
-        # cv2.waitKey(1)
+            # cv2.imshow('depth', depth)
+            # cv2.imshow('cropped', cropped)
+            # cv2.imshow('resized', resized)
+            # cv2.imshow('recolored', recolored)
+            # cv2.waitKey(1)
