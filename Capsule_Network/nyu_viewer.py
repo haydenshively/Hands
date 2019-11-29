@@ -12,7 +12,7 @@ if __name__ == '__main__':
     num_files = num_files_in(os.path.join(dir, 'X'))
 
     while True:
-        file_name = '%07d.npy' % int(random.random()*num_files)
+        file_name = '2%07d.npy' % int(random.random()*num_files)
         try:
             x = np.load(os.path.join(dir, 'X', file_name))
             y = np.load(os.path.join(dir, 'Y', file_name))

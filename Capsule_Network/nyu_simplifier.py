@@ -47,15 +47,15 @@ def world2pixel(x):
 
 desired_size=256
 dir = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train/'
-dir_out = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train_npy_n/'
+dir_out = '/Users/coppercut/Downloads/datasets/nyu_hand_dataset/train_npy/'
 
 if __name__ == '__main__':
     files = os.listdir(dir)
-    files.sort()
+    # files.sort()
 
     joint_data = sio.loadmat(os.path.join(dir, 'joint_data.mat'))
     joint_coords = joint_data['joint_uvd']
-    joint_coords = joint_coords.reshape(-1, *joint_coords.shape[2:])
+    # joint_coords = joint_coords.reshape(-1, *joint_coords.shape[2:])
 
     def imread_tf(path):
         x = tf.io.read_file(path)
@@ -73,12 +73,10 @@ if __name__ == '__main__':
     def resize_cv(img, size):
         return cv2.resize(img, (size,)*2)
 
-
-    successes = 0
     for file in files:
         if file.startswith('depth') and file.endswith('.png'):
-
-            Y = joint_coords[successes]
+            Y_index = file.split('.')[0].split('_')
+            Y = joint_coords[int(Y_index[-2]) - 1, int(Y_index[-1]) - 1]
             # Y_center = Y[:,:2].mean(axis = 0)
             # Y_size = Y[:,:2].std(axis = 0).max(axis = 0)*2.5
             Y_size = Y[:,:2].ptp(axis = 0)/2.0
@@ -91,14 +89,18 @@ if __name__ == '__main__':
             depth = np.left_shift(depth[:,:,1].astype('uint32'), 8) + depth[:,:,2].astype('uint32')
             depth = 1 - depth.astype('float32')/depth.max()
 
-            center = tuple(Y_center.astype('uint32'))
+            center = tuple(Y_center.astype('uint32') + 50)
             size = int(Y_size)
-            cropped = depth[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
+            padded = np.pad(depth, ((50,50),), mode='constant', constant_values=0)
+            cropped = padded[center[1]-size:center[1]+size, center[0]-size:center[0]+size]
 
             # resized = resize_tf(cropped, desired_size)
             resized = resize_cv(cropped, desired_size)
 
-            recolored = (resized - resized.mean()) * min(1.2, 1.0/resized.ptp())
+            ptp = resized.ptp()
+            if ptp == 0.0: ptp = 1.0
+
+            recolored = (resized - resized.mean()) * min(1.2, 1.0/ptp)
             recolored = recolored - recolored.min()
 
             Y[:,:2] -= Y_center - Y_size
@@ -107,11 +109,12 @@ if __name__ == '__main__':
             Y[:,2] -= Y[:,2].min()
             Y[:,2] /= Y[:,2].max()
 
-            out_name = file.split('.')[0].split('_')[-1] + '.npy'
+            out_name = file.split('.')[0].split('_')
+            out_name = out_name[-2] + out_name[-1] + '.npy'
+            # print(out_name)
             np.save(os.path.join(dir_out, 'X', out_name), recolored)
             np.save(os.path.join(dir_out, 'Y', out_name), Y)
 
-            successes += 1
 
             # gt_resized = recolored.copy()
             # for j in range(Y.shape[0]):
