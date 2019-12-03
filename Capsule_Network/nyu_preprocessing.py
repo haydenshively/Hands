@@ -25,9 +25,12 @@ class NYU(Sequence):
         self.dir_X = os.path.join(dir, 'X')
         self.dir_Y = os.path.join(dir, 'Y')
 
+        self.names = os.listdir(self.dir_X)
+        self.names.sort()
+
         self.desired_size = desired_size
 
-        self.sample_count = num_files_in(self.dir_X)
+        self.sample_count = len(self.names)
         self.batch_size = batch_size
 
         # self.dim = [desired_size, desired_size, 1]
@@ -35,6 +38,13 @@ class NYU(Sequence):
 
     def __len__(self):
         return math.ceil(self.sample_count / self.batch_size)
+
+    def load_x_or_y(self, dir, id):
+        name = '%07d.npy' % id
+        try:
+            return np.load(os.path.join(dir, name))
+        except:
+            return self.load_x_or_y(dir, id - 1)
 
     def __getitem__(self, idx):
         start = idx * self.batch_size
@@ -45,12 +55,15 @@ class NYU(Sequence):
         Y = []
 
         for i in range(start, end):
-            name = '%07d.npy' % i
+            name = self.names[i]
             X.append(np.load(os.path.join(self.dir_X, name)))
             Y.append(np.load(os.path.join(self.dir_Y, name)))
 
-        X = np.asarray(X)
-        Y = np.asarray(Y)
-        Y[:,:2] /= self.desired_size
 
-        return X, Y[:,:2]
+        X = np.expand_dims(np.asarray(X), axis = -1)
+        Y = np.asarray(Y)
+#        print(Y[:,:2])
+#        print(Y[:,:2].shape)
+        Y[:,:,:2] /= self.desired_size
+
+        return X, Y[:,:,:2]
