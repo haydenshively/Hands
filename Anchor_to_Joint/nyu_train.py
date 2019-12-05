@@ -1,4 +1,4 @@
-from tensorflow.keras import layers, models, callbacks
+from tensorflow.keras import layers, models, callbacks, optimizers
 
 from a2j.a2j import a2j#A2J
 from a2j.losses import *
@@ -6,12 +6,9 @@ from a2j.losses import *
 from nyu_preprocessing import NYU
 
 if __name__ == '__main__':
-    NYU_DIR = '/hdd/datasets/hands/nyu_hand_dataset/train'
-
+    NYU_DIR = '/home/haydenshively/ssd-datasets/train_npy'
     generator = NYU(NYU_DIR, desired_size=256, batch_size=16)
-
-    from tensorflow.keras.optimizers import Adam
-    optimizer = Adam(lr = 0.035)
+    optimizer = optimizers.Adam(lr = 0.035)
 
     checkpoint = callbacks.ModelCheckpoint('model.h5', monitor='loss', verbose=1, save_best_only=True, mode='auto', period=1)
 
@@ -20,8 +17,8 @@ if __name__ == '__main__':
     model = models.Model(inputs=inputs, outputs=outputs)
     #model.summary()
 
-    tau1 = 1.0/3.0/10.0
-    tau2 = 1.0/10.0
+    tau1 = 1.0/3.0
+    tau2 = 1.0
     losses = [smoothL1(tau1), smoothL1(tau2), smoothL1(tau1)]
     loss_weights = [1.0, 1.0, 1.0/3.0]
 
@@ -33,5 +30,5 @@ if __name__ == '__main__':
               callbacks = [checkpoint],
               steps_per_epoch = generator.__len__(),
               shuffle = False,
-              workers = 4,
+              workers = 8,
               use_multiprocessing = True)
