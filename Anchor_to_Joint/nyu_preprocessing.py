@@ -55,6 +55,7 @@ class NYU(Sequence):
 #        print(Y[:,:2])
 #        print(Y[:,:2].shape)
         Y[:,:,:2] /= self.desired_size
+        Y[:,:,2] /= Y[:,:,2].max()
 
         Y_split = Y[:,:,:2], Y[:,:,2], Y[:,:,:2]
         return X, Y_split

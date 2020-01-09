@@ -10,7 +10,7 @@ if __name__ == '__main__':
     generator = NYU(NYU_DIR, desired_size=256, batch_size=16)
     optimizer = optimizers.Adam(lr = 0.035)
 
-    checkpoint = callbacks.ModelCheckpoint('model.h5', monitor='loss', verbose=1, save_best_only=True, mode='auto', period=1)
+    checkpoint = callbacks.ModelCheckpoint('model-{epoch:02d}.h5', verbose=1)
 
     inputs = layers.Input(shape = (256, 256, 1))
     outputs = a2j(inputs, 36)

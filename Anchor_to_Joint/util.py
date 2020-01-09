@@ -43,13 +43,13 @@ def post_process(responses, offsets, depths):
 
     responses = layers.Activation('softmax')(responses)
     anchor_heatmap = layers.Lambda(lambda x: x*anchor_coords)(responses)
-    anchor_heatmap = layers.Lambda(lambda x: K.sum(x, axis=1))(anchor_heatmap)
+    anchor_heatmap = layers.Lambda(lambda x: K.sum(x, axis=1), name = 'Heatmap')(anchor_heatmap)
 
     joint_coords = layers.Lambda(lambda x: x+anchor_coords)(offsets)
     joint_coords = layers.Multiply()([joint_coords, responses])
-    joint_coords = layers.Lambda(lambda x: K.sum(x, axis=1))(joint_coords)
+    joint_coords = layers.Lambda(lambda x: K.sum(x, axis=1), name = 'Joints')(joint_coords)
 
     depths = layers.Multiply()([depths, responses])
-    depths = layers.Lambda(lambda x: K.sum(x, axis=1))(depths)
+    depths = layers.Lambda(lambda x: K.sum(x, axis=1), name = 'Depths')(depths)
 
     return joint_coords, depths, anchor_heatmap
