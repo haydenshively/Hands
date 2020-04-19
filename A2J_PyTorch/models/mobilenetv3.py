@@ -25,7 +25,7 @@ class MobileNetV3(nn.Module):
         self.conv2 = nn.Conv2d(oup, inp, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn2 = nn.BatchNorm2d(inp)
         self.hs2 = h_swish()
-        
+
         if not truncated:
             self.linear3 = nn.Linear(inp, 1280)
             self.bn3 = nn.BatchNorm1d(1280)

@@ -12,11 +12,16 @@ class AnchorProposal(Regression):
         super().__init__(in_size, 1, feature_size, num_anchors, num_classes)
 
 
-from mobilenetv3 import MobileNetV3
+from .mobilenetv3 import MobileNetV3
 class MNV3Backbone(MobileNetV3):
     def __init__(self, config):
         super().__init__(config, truncated=True)
     def forward(x):
+        # get depth and clone across channels for compatibility
+        # n, c, h, w = x.size()
+        # x = x[:,0,:,:]
+        # x = x.expand(n, 3, h, w)
+        # now run it through the model
         x = self.hs1(self.bn1(self.conv1(x)))
         x3 = self.bneck(x)
         x4 = self.hs2(self.bn2(self.conv2(x3)))
@@ -24,22 +29,25 @@ class MNV3Backbone(MobileNetV3):
 
 
 class A2J(nn.Module):
-    def __init__(self, backbone, num_classes):
+    def __init__(self, backbone, num_classes, is_3D=True):
         super(A2J, self).__init__()
 
         self.backbone = backbone
-        self.predict_offset = InPlaneRegression(576, num_classes=num_classes)
-        self.predict_depth = DepthRegression(576, num_classes=num_classes)
         self.response_map = AnchorProposal(288, num_classes=num_classes)
+        self.predict_offset = InPlaneRegression(576, num_classes=num_classes)
+        if is_3D:
+            self.predict_depth = DepthRegression(576, num_classes=num_classes)
 
     def forward(self, x):
         x3, x4 = self.backbone(x)
 
-        offsets = self.predict_offset(x4)
-        depths = self.predict_depth(x4)
         responses = self.response_map(x3)
+        offsets = self.predict_offset(x4)
+        if is_3d:
+            depths = self.predict_depth(x4)
+            return (responses, offsets, depths)
 
-        return (offsets, depths, responses)
+        return (responses, offsets)
 
 
 if __name__ == '__main__':
