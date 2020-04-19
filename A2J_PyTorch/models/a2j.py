@@ -48,28 +48,3 @@ class A2J(nn.Module):
             return (responses, offsets, depths)
 
         return (responses, offsets)
-
-
-if __name__ == '__main__':
-    from activations import h_sigmoid, h_swish
-    from blocks import SqueezeExcite
-
-    config = [
-        #k, s, ex, out, nl,                    se
-        [3, 2, 16, 16,  nn.ReLU(inplace=True), SqueezeExcite(16)],
-        [3, 2, 72, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 1, 88, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [5, 2, 96, 40,  h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 120, 48, h_swish(), SqueezeExcite(48)],
-        [5, 1, 144, 48, h_swish(), SqueezeExcite(48)],
-        [5, 2, 288, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
-    ]
-    backbone = MNV3Backbone(config)
-    a2j = A2J(backbone, num_classes=15)
-    # print(a2j)
-
-    print('Total params: %.2fM' % (sum(p.numel() for p in a2j.parameters())/1000000.0))
