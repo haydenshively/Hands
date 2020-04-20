@@ -253,7 +253,7 @@ def train():
     net = net.cuda()
 
     post_precess = A2JPostProcess(shape=[cropHeight//16,cropWidth//16], stride=16, P_h=None, P_w=None)
-    criterion = anchor.A2J_loss(shape=[cropHeight//16,cropWidth//16],thres = [16.0,32.0],stride=16,\
+    criterion = anchor.A2J_loss(shape=[cropHeight//16,cropWidth//16],stride=16,\
         spatialFactor=spatialFactor,img_shape=[cropHeight, cropWidth],P_h=None, P_w=None)
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate, weight_decay=Weight_Decay)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)

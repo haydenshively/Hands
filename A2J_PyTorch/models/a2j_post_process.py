@@ -6,7 +6,7 @@ import util
 
 
 class A2JPostProcess(nn.Module):
-    def __init__(self, P_h=[2,6], P_w=[2,6], shape=[48,26], stride=8, thres=8, is_3D=True):
+    def __init__(self, P_h=[2,6], P_w=[2,6], shape=[48,26], stride=8, is_3D=True):
         super(post_process, self).__init__()
 
         anchor_cluster = util.generate_anchors(P_h=P_h, P_w=P_w)
@@ -14,7 +14,6 @@ class A2JPostProcess(nn.Module):
         anchor_coords = torch.from_numpy(anchor_coords).cuda().float()
 
         self.anchor_coords = anchor_coords
-        # self.thres = torch.from_numpy(np.array(thres)).cuda().float()
         self.is_3D = is_3D
 
     def calc_distance(self, a, b):
