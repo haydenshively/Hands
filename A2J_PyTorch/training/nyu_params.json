@@ -1,0 +1,33 @@
+{
+  "keypoints": 14,
+  "frames": {
+    "training": 72757,
+    "testing": 8252
+  },
+  "preprocessing": {
+    "crop": {
+      "width": 176,
+      "height": 176
+    },
+    "rand_shift": {
+      "xy": 5,
+      "depth": 1
+    },
+    "rand_rotate": 180,
+    "rand_scale": [1.0, 0.5],
+    "thresh": {
+      "xy": 110,
+      "depth": 150
+    }
+  },
+  "training": {
+    "batch_size": 64,
+    "learning_rate": 0.00035,
+    "weight_decay": 1e-4,
+    "epochs": 35
+  },
+  "model": {
+    "reg_loss_factor": 3,
+    "spatial_factor": 0.5
+  }
+}
