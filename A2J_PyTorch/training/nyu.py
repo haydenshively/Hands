@@ -259,7 +259,7 @@ def train(net):
                 with torch.no_grad():
                     # img, label = img.cuda(), label.cuda()
                     heads = net(img)
-                    pred_keypoints = post_process(heads, voting=False)
+                    pred_keypoints = post_process(heads)
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
 
             result = output.cpu().data.numpy()
