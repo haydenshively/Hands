@@ -1,4 +1,7 @@
 if __name__ == '__main__':
+    from training import nyu
+
+if __name__ == '__main__':
     import torch.nn as nn
 
     from activations import h_sigmoid, h_swish

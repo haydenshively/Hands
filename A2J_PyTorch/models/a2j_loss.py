@@ -9,9 +9,9 @@ class A2JLoss(nn.Module):
     def __init__(self, P_h=[2,6], P_w=[2,6], shape=[8,4], stride=8, spatialFactor=0.1, is_3D=True):
         super(A2JLoss, self).__init__()
 
-        anchor_cluster = util.generate_anchors(P_h=P_h, P_w=P_w)
+        anchor_cluster = util.generate_anchor_cluster(P_h=P_h, P_w=P_w)
         anchor_coords = util.replicate(anchor_cluster, shape, stride)
-        anchor_coords = torch.from_numpy(anchor_coords).cuda().float()
+        anchor_coords = torch.from_numpy(anchor_coords).float()#cuda()
 
         self.anchor_coords = anchor_coords
         self.is_3D = is_3D
@@ -41,10 +41,11 @@ class A2JLoss(nn.Module):
             Compute heatmap and joint coords, just like in A2JPostProcess
             '''
             # responses has shape N*(w*h*A)*P
-            response = responses[j,:,:]
+            response = responses[j]
             # softmax response to get heatmap, then create 1 and 2 channel versions of it
             heatmap_1c = F.softmax(response, dim=0)#(w*h*A)*P
-            heatmap_2c = torch.unsqueeze(heatmap_1c, 2).expand(heatmap_1c.shape[0], heatmap_1c.shape[1], 2)#(w*h*A)*P*2
+            # heatmap_2c = torch.unsqueeze(heatmap_1c, 2).expand(heatmap_1c.shape[0], heatmap_1c.shape[1], 2)#(w*h*A)*P*2
+            heatmap_2c = heatmap_1c.expand(heatmap_1c.shape[0], heatmap_1c.shape[1], 2)#(w*h*A)*P*2
             # offsets has shape N*(w*h*A)*P*2
             joint_coords = torch.unsqueeze(self.anchor_coords, 1) + offsets[j,:,:,:]
             joint_coords = (heatmap_2c * joint_coords).sum(0)

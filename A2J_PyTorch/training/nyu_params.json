@@ -1,5 +1,5 @@
 {
-  "keypoints": 14,
+  "keypoints": 36,
   "frames": {
     "training": 72757,
     "testing": 8252
@@ -16,7 +16,7 @@
     "rand_rotate": 180,
     "rand_scale": [1.0, 0.5],
     "thresh": {
-      "xy": 110,
+      "xy": 5,
       "depth": 150
     }
   },

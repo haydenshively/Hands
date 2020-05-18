@@ -16,11 +16,10 @@ from .mobilenetv3 import MobileNetV3
 class MNV3Backbone(MobileNetV3):
     def __init__(self, config):
         super().__init__(config, truncated=True)
-    def forward(x):
+    def forward(self, x):
         # get depth and clone across channels for compatibility
-        # n, c, h, w = x.size()
-        # x = x[:,0,:,:]
-        # x = x.expand(n, 3, h, w)
+        n, c, h, w = x.size()
+        x = x.expand(n, 3, h, w)
         # now run it through the model
         x = self.hs1(self.bn1(self.conv1(x)))
         x3 = self.bneck(x)
@@ -31,11 +30,12 @@ class MNV3Backbone(MobileNetV3):
 class A2J(nn.Module):
     def __init__(self, backbone, num_classes, is_3D=True):
         super(A2J, self).__init__()
+        self.is_3D = is_3D
 
         self.backbone = backbone
-        self.response_map = AnchorProposal(288, num_classes=num_classes)
+        self.response_map = AnchorProposal(96, num_classes=num_classes)# 288
         self.predict_offset = InPlaneRegression(576, num_classes=num_classes)
-        if is_3D:
+        if self.is_3D:
             self.predict_depth = DepthRegression(576, num_classes=num_classes)
 
     def forward(self, x):
@@ -43,7 +43,7 @@ class A2J(nn.Module):
 
         responses = self.response_map(x3)
         offsets = self.predict_offset(x4)
-        if is_3d:
+        if self.is_3D:
             depths = self.predict_depth(x4)
             return (responses, offsets, depths)
 

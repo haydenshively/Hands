@@ -14,28 +14,35 @@ from models.a2j_post_process import A2JPostProcess
 from models.a2j_loss import A2JLoss
 
 
-'''-----------------------------------------------------------------------------ASSORTED CONSTANTS'''
-MEAN = np.array(-0.66877532422628)
-STD = np.array(28.329582076876047)
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------MANUAL PARAMETERS'''
+MEAN = np.array(-4.55807423)
+STD = np.array(20.69040591)
 RANDOM_SEED = 12345
+random.seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
+torch.manual_seed(RANDOM_SEED)
 # Specify camera intrinsics
 fx = 588.03
 fy = -587.07
 u0 = 320
 v0 = 240
-'''-----------------------------------------------------------------------------DATA LOCATION'''
 # Specify image directories
+camera_id = 1
 image_dir_train = '/Volumes/T7 Touch/datasets/hands/NYU/train'
-image_dir_test = '/Volumes/T7 Touch/datasets/hands/NYU/test'
+image_dir__test = '/Volumes/T7 Touch/datasets/hands/NYU/test'
 # Specify files containing coords of hand centers
 centers_train = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_train_refined.txt'
-centers_test = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_test_refined.txt'
+centers__test = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_test_refined.txt'
 # Specify files containing coords of hand keypoints
 keypoint_file_train = '/Volumes/T7 Touch/datasets/hands/NYU/train/joint_data.mat'
-keypoint_file_test = '/Volumes/T7 Touch/datasets/hands/NYU/train/joint_data.mat'
-'''-----------------------------------------------------------------------------JSON PARAMETERS'''
+keypoint_file__test = '/Volumes/T7 Touch/datasets/hands/NYU/test/joint_data.mat'
+# Specify output directory and files
+save_dir = 'results'
+model_dir = 'NYU_batch_64_12345.pth'
+result_file = 'NYU_batch_64_12345.txt'
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------JSON PARAMETERS'''
 params = {}
-with open('nyu_params.json') as f:
+with open('training/nyu_params.json') as f:
     params = json.load(f)
     print('Active Parameters:')
     print(json.dumps(params, indent=2))
@@ -50,7 +57,7 @@ NUM_FRAME_TEST = params['frames']['testing']
 IMG_WIDTH = params['preprocessing']['crop']['width']
 IMG_HEIGHT = params['preprocessing']['crop']['height']
 RAND_SHIFT_CROP = params['preprocessing']['rand_shift']['xy']
-RAND_SHIFT_DEPTH = params['preprocessing']['rand_shift']['depth']
+RAND_SHIFT_DEPTH = params['preprocessing']['rand_shift']['depth']# TODO not implemented
 RAND_ROTATE = params['preprocessing']['rand_rotate']
 RAND_SCALE = params['preprocessing']['rand_scale']
 THRESH_XY = params['preprocessing']['thresh']['xy']
@@ -65,179 +72,136 @@ REG_LOSS_FACTOR = params['model']['reg_loss_factor']
 SPATIAL_FACTOR = params['model']['spatial_factor']
 
 
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------LOADING COORDS'''
+# Load coords from train set
+keypointsUVD_train = scio.loadmat(keypoint_file_train)['joint_uvd'].astype(np.float32)
+keypointsUVD__test = scio.loadmat(keypoint_file__test)['joint_uvd'].astype(np.float32)
+keypointsUVD_train = keypointsUVD_train[camera_id - 1]
+keypointsUVD__test = keypointsUVD__test[camera_id - 1]
+center_train = keypointsUVD_train.mean(axis=1)
+center__test = keypointsUVD__test.mean(axis=1)
+sizes_train = keypointsUVD_train[:,:,:2].ptp(axis=1).max(axis=1)/2.0 + THRESH_XY
+sizes__test = keypointsUVD__test[:,:,:2].ptp(axis=1).max(axis=1)/2.0 + THRESH_XY
+# Set bounding box corners
+# --> top left
+lefttop_pixel_train = np.zeros((center_train.shape[0], 2))
+lefttop_pixel__test = np.zeros((center__test.shape[0], 2))
+lefttop_pixel_train[:,0] = center_train[:,0] - sizes_train
+lefttop_pixel__test[:,0] = center__test[:,0] - sizes__test
+lefttop_pixel_train[:,1] = center_train[:,1] - sizes_train
+lefttop_pixel__test[:,1] = center__test[:,1] - sizes__test
+# --> bottom right
+rightbottom_pixel_train = np.zeros((center_train.shape[0], 2))
+rightbottom_pixel__test = np.zeros((center__test.shape[0], 2))
+rightbottom_pixel_train[:,0] = center_train[:,0] + sizes_train
+rightbottom_pixel__test[:,0] = center__test[:,0] + sizes__test
+rightbottom_pixel_train[:,1] = center_train[:,1] + sizes_train
+rightbottom_pixel__test[:,1] = center__test[:,1] + sizes__test
 
 
-
-random.seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
-torch.manual_seed(RANDOM_SEED)
-
-save_dir = './result/NYU_batch_64_12345'
-
-try:
-    os.makedirs(save_dir)
-except OSError:
-    pass
-
-model_dir = '../model/NYU.pth'
-result_file = 'result_NYU.txt'
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------PREPROCESSING'''
+def transform(img, label, matrix):
+    # img: [H, W], label, [N,2]
+    img_out = cv2.warpAffine(img,matrix,(IMG_WIDTH,IMG_HEIGHT))
+    label_out = np.ones((NUM_KEYPOINT, 3))
+    label_out[:,:2] = label[:,:2].copy()
+    label_out = np.matmul(matrix, label_out.T)
+    return img_out, label_out.T
 
 
-
-
-
-## loading GT keypoints and center points
-keypointsUVD_test = scio.loadmat(keypoint_file_test)['keypoints3D'].astype(np.float32)
-center_test = scio.loadmat(centers_test)['centre_pixel'].astype(np.float32)
-
-centre_test_world = pixel2world(center_test.copy(), fx, fy, u0, v0)
-
-centerlefttop_test = centre_test_world.copy()
-centerlefttop_test[:,0,0] = centerlefttop_test[:,0,0]-THRESH_XY
-centerlefttop_test[:,0,1] = centerlefttop_test[:,0,1]+THRESH_XY
-
-centerrightbottom_test = centre_test_world.copy()
-centerrightbottom_test[:,0,0] = centerrightbottom_test[:,0,0]+THRESH_XY
-centerrightbottom_test[:,0,1] = centerrightbottom_test[:,0,1]-THRESH_XY
-
-test_lefttop_pixel = world2pixel(centerlefttop_test, fx, fy, u0, v0)
-test_rightbottom_pixel = world2pixel(centerrightbottom_test, fx, fy, u0, v0)
-
-
-keypointsUVD_train = scio.loadmat(keypoint_file_train)['keypoints3D'].astype(np.float32)
-center_train = scio.loadmat(centers_train)['centre_pixel'].astype(np.float32)
-centre_train_world = pixel2world(center_train.copy(), fx, fy, u0, v0)
-
-centerlefttop_train = centre_train_world.copy()
-centerlefttop_train[:,0,0] = centerlefttop_train[:,0,0]-THRESH_XY
-centerlefttop_train[:,0,1] = centerlefttop_train[:,0,1]+THRESH_XY
-
-centerrightbottom_train = centre_train_world.copy()
-centerrightbottom_train[:,0,0] = centerrightbottom_train[:,0,0]+THRESH_XY
-centerrightbottom_train[:,0,1] = centerrightbottom_train[:,0,1]-THRESH_XY
-
-train_lefttop_pixel = world2pixel(centerlefttop_train, fx, fy, u0, v0)
-train_rightbottom_pixel = world2pixel(centerrightbottom_train, fx, fy, u0, v0)
-
-
-
-def dataPreprocess(index, img, keypointsUVD, center, mean, std, lefttop_pixel, rightbottom_pixel, augment=True):
-
-    imageOutputs = np.ones((IMG_HEIGHT, IMG_WIDTH, 1), dtype='float32')
-    labelOutputs = np.ones((NUM_KEYPOINT, 3), dtype = 'float32')
-
+def preprocess(index, img, keypointsUVD, center, lefttop_pixel, rightbottom_pixel, augment=True):
+    # Generate augmentation parameters
     if augment:
-        RandomOffset_1 = np.random.randint(-1*RAND_SHIFT_CROP,RAND_SHIFT_CROP)
-        RandomOffset_2 = np.random.randint(-1*RAND_SHIFT_CROP,RAND_SHIFT_CROP)
-        RandomOffset_3 = np.random.randint(-1*RAND_SHIFT_CROP,RAND_SHIFT_CROP)
-        RandomOffset_4 = np.random.randint(-1*RAND_SHIFT_CROP,RAND_SHIFT_CROP)
-        RandomOffsetDepth = np.random.normal(0, RAND_SHIFT_DEPTH, IMG_HEIGHT*IMG_WIDTH).reshape(IMG_HEIGHT,IMG_WIDTH)
-        RandomOffsetDepth[np.where(RandomOffsetDepth < RAND_SHIFT_DEPTH)] = 0
-        RandomRotate = np.random.randint(-1*RAND_ROTATE,RAND_ROTATE)
-        RandomScale = np.random.rand()*RAND_SCALE[0]+RAND_SCALE[1]
-        matrix = cv2.getRotationMatrix2D((IMG_WIDTH/2,IMG_HEIGHT/2),RandomRotate,RandomScale)
+        random_offset = np.random.randint(-RAND_SHIFT_CROP, +RAND_SHIFT_CROP, size=4)
+        random_rotate = np.random.randint(-RAND_ROTATE, +RAND_ROTATE)
+        random_scale = np.random.rand()*RAND_SCALE[0] + RAND_SCALE[1]
     else:
-        RandomOffset_1, RandomOffset_2, RandomOffset_3, RandomOffset_4 = 0, 0, 0, 0
-        RandomRotate = 0
-        RandomScale = 1
-        RandomOffsetDepth = 0
-        matrix = cv2.getRotationMatrix2D((IMG_WIDTH/2,IMG_HEIGHT/2),RandomRotate,RandomScale)
-
-    new_Xmin = max(lefttop_pixel[index,0,0] + RandomOffset_1, 0)
-    new_Ymin = max(lefttop_pixel[index,0,1] + RandomOffset_2, 0)
-    new_Xmax = min(rightbottom_pixel[index,0,0] + RandomOffset_3, img.shape[1] - 1)
-    new_Ymax = min(rightbottom_pixel[index,0,1] + RandomOffset_4, img.shape[0] - 1)
-
-    imCrop = img[int(new_Ymin):int(new_Ymax), int(new_Xmin):int(new_Xmax)].copy()
-
-    imgResize = cv2.resize(imCrop, (IMG_WIDTH, IMG_HEIGHT), interpolation=cv2.INTER_NEAREST)
-
-    imgResize = np.asarray(imgResize,dtype = 'float32')  # H*W*C
-
-    imgResize[np.where(imgResize >= center[index][0][2] + THRESH_DEPTH)] = center[index][0][2]
-    imgResize[np.where(imgResize <= center[index][0][2] - THRESH_DEPTH)] = center[index][0][2]
-    imgResize = (imgResize - center[index][0][2])*RandomScale
-
-    imgResize = (imgResize - mean) / std
-
-    ## label
+        random_offset = np.zeros(4, dtype='int')
+        random_rotate = 0
+        random_scale = 1
+    matrix = cv2.getRotationMatrix2D((IMG_WIDTH/2, IMG_HEIGHT/2), random_rotate, random_scale)
+    # Recompute bounding box, incorporating random_offset
+    new_Xmin = max(lefttop_pixel[index,0] + random_offset[0], 0)
+    new_Ymin = max(lefttop_pixel[index,1] + random_offset[1], 0)
+    new_Xmax = min(rightbottom_pixel[index,0] + random_offset[2], img.shape[1] - 1)
+    new_Ymax = min(rightbottom_pixel[index,1] + random_offset[3], img.shape[0] - 1)
+    # DEAL WITH IMAGES
+    # Crop to bounding box and stretch/squish to appropriate size
+    cropped = img[int(new_Ymin):int(new_Ymax), int(new_Xmin):int(new_Xmax)].copy()
+    resized = cv2.resize(cropped, (IMG_WIDTH, IMG_HEIGHT), interpolation=cv2.INTER_NEAREST).astype('float32')
+    # This is like a bounding box in the Z direction.
+    # Anything outside of the window gets set to the center pixel's color
+    resized[np.where(resized >= center[index,2] + THRESH_DEPTH)] = center[index,2]
+    resized[np.where(resized <= center[index,2] - THRESH_DEPTH)] = center[index,2]
+    # Set center pixel's color to be 0, then stretch Z direction by random_scale
+    resized = (resized - center[index,2]) * random_scale
+    # Same thing, but for MEAN and STD of the dataset
+    resized = (resized - MEAN) / STD# TODO how much does this impact results
+    # DEAL WITH LABELS
     label_xy = np.ones((NUM_KEYPOINT, 2), dtype = 'float32')
-    label_xy[:,0] = (keypointsUVD[index,:,0].copy() - new_Xmin)*IMG_WIDTH/(new_Xmax - new_Xmin) # x
-    label_xy[:,1] = (keypointsUVD[index,:,1].copy() - new_Ymin)*IMG_HEIGHT/(new_Ymax - new_Ymin) # y
+    label_xy[:,0] = (keypointsUVD[index,:,0].copy() - new_Xmin) * IMG_WIDTH / (new_Xmax - new_Xmin)
+    label_xy[:,1] = (keypointsUVD[index,:,1].copy() - new_Ymin) * IMG_HEIGHT / (new_Ymax - new_Ymin)
+    # FINISH UP
+    # Apply random rotation and scale to images and xy labels
+    if augment: resized, label_xy = transform(resized, label_xy, matrix)
+    # Create final arrays
+    images_out = np.ones((IMG_HEIGHT, IMG_WIDTH, 1), dtype='float32')
+    labels_out = np.ones((NUM_KEYPOINT, 3), dtype = 'float32')
+    # Populate them
+    images_out[:,:,0] = resized
+    images_out = images_out.transpose(2, 0, 1)
+    labels_out[:,1] = label_xy[:,0]
+    labels_out[:,0] = label_xy[:,1]
+    # ** (finally) Apply scale to z labels
+    labels_out[:,2] = (keypointsUVD[index,:,2] - center[index,2]) * random_scale
 
-    if augment:
-        def transform(img, label, matrix):
-            # img: [H, W], label, [N,2]
-            img_out = cv2.warpAffine(img,matrix,(IMG_WIDTH,IMG_HEIGHT))
-            label_out = np.ones((NUM_KEYPOINT, 3))
-            label_out[:,:2] = label[:,:2].copy()
-            label_out = np.matmul(matrix, label_out.T)
-            return img_out, label_out.T
-
-        imgResize, label_xy = transform(imgResize, label_xy, matrix)
-
-    imageOutputs[:,:,0] = imgResize
-
-    labelOutputs[:,1] = label_xy[:,0]
-    labelOutputs[:,0] = label_xy[:,1]
-    labelOutputs[:,2] = (keypointsUVD[index,:,2] - center[index][0][2])*RandomScale   # Z
-
-    imageOutputs = np.asarray(imageOutputs)
-    imageNCHWOut = imageOutputs.transpose(2, 0, 1)  # [H, W, C] --->>>  [C, H, W]
-    imageNCHWOut = np.asarray(imageNCHWOut)
-    labelOutputs = np.asarray(labelOutputs)
-
-    data, label = torch.from_numpy(imageNCHWOut), torch.from_numpy(labelOutputs)
-
-    return data, label
+    return torch.from_numpy(images_out), torch.from_numpy(labels_out)
 
 
-######################   Pytorch dataloader   #################
-class my_dataloader(torch.utils.data.Dataset):
-
-    def __init__(self, ImgDir, center, lefttop_pixel, rightbottom_pixel, keypointsUVD, augment=True):
-
-        self.ImgDir = ImgDir
-        self.mean = MEAN
-        self.std = STD
-        self.center = center
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------DATA LOADER'''
+class NYUDataset(torch.utils.data.Dataset):
+    def __init__(self, dir, centers, lefttop_pixel, rightbottom_pixel, keypointsUVD, augment=True):
+        self.dir = dir
+        self.centers = centers
         self.lefttop_pixel = lefttop_pixel
         self.rightbottom_pixel = rightbottom_pixel
         self.keypointsUVD = keypointsUVD
         self.augment = augment
-        self.randomErase = random_erasing.RandomErasing(probability = 0.5, sl = 0.02, sh = 0.4, r1 = 0.3, mean=[0])
+
+        self.randomErase = RandomErasing(probability = 0.5, sl = 0.02, sh = 0.4, r1 = 0.3, mean=[0])
 
     def __getitem__(self, index):
+        filename = 'depth_%d_%07d.png' % (camera_id, index + 1)
 
-        depth = scio.loadmat(self.ImgDir + str(index+1) + '.mat')['depth']
+        depth = NYUDataset.imread_cv(os.path.join(self.dir, filename))
+        data, label = preprocess(index, depth, self.keypointsUVD, self.centers, self.lefttop_pixel, self.rightbottom_pixel, self.augment)
 
-        data, label = dataPreprocess(index, depth, self.keypointsUVD, self.center, self.mean, self.std, \
-            self.lefttop_pixel, self.rightbottom_pixel, THRESH_XY, THRESH_DEPTH, self.augment)
-
-        if self.augment:
-            data = self.randomErase(data)
-
+        if self.augment: data = self.randomErase(data)
         return data, label
 
     def __len__(self):
-        return len(self.center)
+        return len(self.centers)
+
+    @staticmethod
+    def imread_cv(path):
+        x = cv2.imread(path, -1)
+        x = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
+        x = np.left_shift(x[:,:,1].astype('uint32'), 8) + x[:,:,2].astype('uint32')
+        return x.astype('float32')
 
 
-train_image_datasets = my_dataloader(image_dir_train, center_train, train_lefttop_pixel, train_rightbottom_pixel, keypointsUVD_train, augment=True)
-train_dataloaders = torch.utils.data.DataLoader(train_image_datasets, BATCH_SIZE = BATCH_SIZE,
-                                             shuffle = True, num_workers = 8)
-
-test_image_datasets = my_dataloader(image_dir_test, center_test, test_lefttop_pixel, test_rightbottom_pixel, keypointsUVD_test, augment=False)
-test_dataloaders = torch.utils.data.DataLoader(test_image_datasets, BATCH_SIZE = BATCH_SIZE,
-                                             shuffle = False, num_workers = 8)
-
+'''----------------------------------------------------------------------------------------------------------------------------------------------------------TRAINING'''
+dataset_train = NYUDataset(image_dir_train, center_train, lefttop_pixel_train, rightbottom_pixel_train, keypointsUVD_train, augment=True)
+dataset__test = NYUDataset(image_dir__test, center__test, lefttop_pixel__test, rightbottom_pixel__test, keypointsUVD__test, augment=False)
+dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=8)
+dataloader__test = torch.utils.data.DataLoader(dataset__test, batch_size=BATCH_SIZE, shuffle=False, num_workers=8)
 
 
 
 def train(net):
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//16, IMG_WIDTH//16], 16)
-    criterion = A2JLoss(None, None, [IMG_HEIGHT//16,IMG_WIDTH//16], 16, SPATIAL_FACTOR)
-    optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, WEIGHT_DECAY=WEIGHT_DECAY)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28, IMG_WIDTH//28], 16)
+    criterion = A2JLoss(None, None, [IMG_HEIGHT//28, IMG_WIDTH//28], 16, SPATIAL_FACTOR)
+    optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     logging.basicConfig(
@@ -254,18 +218,15 @@ def train(net):
         Cls_loss_add = 0.0
         Reg_loss_add = 0.0
 
-        # Training loop
-        for i, (img, label) in enumerate(train_dataloaders):
+        for i, (img, label) in enumerate(dataloader_train):
+            # img, label = img.cuda(), label.cuda()
 
-            img, label = img.cuda(), label.cuda()
-
-            heads  = net(img)
-            #print(regression)
+            heads = net(img)
             optimizer.zero_grad()
 
             Cls_loss, Reg_loss = criterion(heads, label)
 
-            loss = 1*Cls_loss + Reg_loss*REG_LOSS_FACTOR
+            loss = Cls_loss + Reg_loss*REG_LOSS_FACTOR
             loss.backward()
             optimizer.step()
 
@@ -273,12 +234,10 @@ def train(net):
             Cls_loss_add = Cls_loss_add + (Cls_loss.item())*len(img)
             Reg_loss_add = Reg_loss_add + (Reg_loss.item())*len(img)
 
-            # printing loss info
             if i%10 == 0:
                 print('epoch: ',epoch, ' step: ', i, 'Cls_loss ',Cls_loss.item(), 'Reg_loss ',Reg_loss.item(), ' total loss ',loss.item())
 
         scheduler.step(epoch)
-
 
         train_loss_add = train_loss_add / NUM_FRAME_TRAIN
         Cls_loss_add = Cls_loss_add / NUM_FRAME_TRAIN
@@ -296,16 +255,16 @@ def train(net):
             output = torch.FloatTensor()
             outputTrain = torch.FloatTensor()
 
-            for i, (img, label) in tqdm(enumerate(test_dataloaders)):
+            for i, (img, label) in tqdm(enumerate(dataloader__test)):
                 with torch.no_grad():
-                    img, label = img.cuda(), label.cuda()
+                    # img, label = img.cuda(), label.cuda()
                     heads = net(img)
                     pred_keypoints = post_process(heads, voting=False)
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
 
             result = output.cpu().data.numpy()
-            Error_test = errorCompute(result,keypointsUVD_test, center_test)
-            print('epoch: ', epoch, 'Test error:', Error_test)
+            # Error_test = errorCompute(result,keypointsUVD__test, center__test)
+            # print('epoch: ', epoch, 'Test error:', Error_test)
             saveNamePrefix = '%s/net_%d_wetD_' % (save_dir, epoch) + str(WEIGHT_DECAY) + '_depFact_' + str(SPATIAL_FACTOR) + '_RegFact_' + str(REG_LOSS_FACTOR) + '_rndShft_' + str(RAND_SHIFT_CROP)
             torch.save(net.state_dict(), saveNamePrefix + '.pth')
 
@@ -324,7 +283,7 @@ def test():
     post_process = anchor.post_process(shape=[IMG_HEIGHT//16,IMG_WIDTH//16],stride=16,P_h=None, P_w=None)
 
     output = torch.FloatTensor()
-    for i, (img, label) in tqdm(enumerate(test_dataloaders)):
+    for i, (img, label) in tqdm(enumerate(dataloader__test)):
         with torch.no_grad():
 
             img, label = img.cuda(), label.cuda()
@@ -334,52 +293,50 @@ def test():
 
 
     result = output.cpu().data.numpy()
-    writeTxt(result, center_test)
-    error = errorCompute(result, keypointsUVD_test, center_test)
-    print('Error:', error)
+    writeTxt(result, center__test)
+    # error = errorCompute(result, keypointsUVD__test, center__test)
+    # print('Error:', error)
 
 
-def errorCompute(source, target, center):
-    assert np.shape(source)==np.shape(target), "source has different shape with target"
-
-    Test1_ = source.copy()
-    target_ = target.copy()
-    Test1_[:, :, 0] = source[:,:,1]
-    Test1_[:, :, 1] = source[:,:,0]
-    Test1 = Test1_  # [x, y, z]
-
-    center_pixel = center.copy()
-    centre_world = pixel2world(center.copy(), fx, fy, u0, v0)
-
-    centerlefttop = centre_world.copy()
-    centerlefttop[:,0,0] = centerlefttop[:,0,0]-THRESH_XY
-    centerlefttop[:,0,1] = centerlefttop[:,0,1]+THRESH_XY
-
-    centerrightbottom = centre_world.copy()
-    centerrightbottom[:,0,0] = centerrightbottom[:,0,0]+THRESH_XY
-    centerrightbottom[:,0,1] = centerrightbottom[:,0,1]-THRESH_XY
-
-    lefttop_pixel = world2pixel(centerlefttop, fx, fy, u0, v0)
-    rightbottom_pixel = world2pixel(centerrightbottom, fx, fy, u0, v0)
-
-    for i in range(len(Test1_)):
-        Xmin = max(lefttop_pixel[i,0,0], 0)
-        Ymin = max(lefttop_pixel[i,0,1], 0)
-        Xmax = min(rightbottom_pixel[i,0,0], 320*2 - 1)
-        Ymax = min(rightbottom_pixel[i,0,1], 240*2 - 1)
-
-        Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
-        Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
-        Test1[i,:,2] = source[i,:,2] + center[i][0][2]
-
-    labels = pixel2world(target_, fx, fy, u0, v0)
-    outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
-
-    errors = np.sqrt(np.sum((labels - outputs) ** 2, axis=2))
-
-    return np.mean(errors)
-
-
+# def errorCompute(source, target, center):
+#     assert np.shape(source)==np.shape(target), "source has different shape with target"
+#
+#     Test1_ = source.copy()
+#     target_ = target.copy()
+#     Test1_[:, :, 0] = source[:,:,1]
+#     Test1_[:, :, 1] = source[:,:,0]
+#     Test1 = Test1_  # [x, y, z]
+#
+#     center_pixel = center.copy()
+#     centre_world = pixel2world(center.copy(), fx, fy, u0, v0)
+#
+#     centerlefttop = centre_world.copy()
+#     centerlefttop[:,0,0] = centerlefttop[:,0,0]-THRESH_XY
+#     centerlefttop[:,0,1] = centerlefttop[:,0,1]+THRESH_XY
+#
+#     centerrightbottom = centre_world.copy()
+#     centerrightbottom[:,0,0] = centerrightbottom[:,0,0]+THRESH_XY
+#     centerrightbottom[:,0,1] = centerrightbottom[:,0,1]-THRESH_XY
+#
+#     lefttop_pixel = world2pixel(centerlefttop, fx, fy, u0, v0)
+#     rightbottom_pixel = world2pixel(centerrightbottom, fx, fy, u0, v0)
+#
+#     for i in range(len(Test1_)):
+#         Xmin = max(lefttop_pixel[i,0,0], 0)
+#         Ymin = max(lefttop_pixel[i,0,1], 0)
+#         Xmax = min(rightbottom_pixel[i,0,0], 320*2 - 1)
+#         Ymax = min(rightbottom_pixel[i,0,1], 240*2 - 1)
+#
+#         Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
+#         Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
+#         Test1[i,:,2] = source[i,:,2] + center[i][0][2]
+#
+#     labels = pixel2world(target_, fx, fy, u0, v0)
+#     outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
+#
+#     errors = np.sqrt(np.sum((labels - outputs) ** 2, axis=2))
+#
+#     return np.mean(errors)
 
 def writeTxt(result, center):
 
@@ -422,31 +379,3 @@ def writeTxt(result, center):
             f.write('\n')
 
     f.close()
-
-if __name__ == '__main__':
-    import torch.nn as nn
-
-    from activations import h_sigmoid, h_swish
-    from blocks import SqueezeExcite
-    from models.a2j import MNV3Backbone, A2J
-
-    config = [
-        #k, s, ex, out, nl,                    se
-        [3, 2, 16, 16,  nn.ReLU(inplace=True), SqueezeExcite(16)],
-        [3, 2, 72, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 1, 88, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [5, 2, 96, 40,  h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 120, 48, h_swish(), SqueezeExcite(48)],
-        [5, 1, 144, 48, h_swish(), SqueezeExcite(48)],
-        [5, 2, 288, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
-    ]
-    backbone = MNV3Backbone(config)
-    a2j = A2J(backbone, num_classes=NUM_KEYPOINT)
-
-
-    train(a2j)
-    test(a2j)

@@ -31,7 +31,7 @@ def replicate(anchor_cluster, shape, stride):
     # add A anchors (1, A, 2) to
     # cell K shifts (K, 1, 2) to get
     # shift anchors (K, A, 2)
-    # reshape to (K*A, 4) shifted anchors
+    # reshape to (K*A, 2) shifted anchors
     A = anchor_cluster.shape[0]
     K = shifts.shape[0]
     all_anchors = (anchor_cluster.reshape((1, A, 2)) + shifts.reshape((1, K, 2)).transpose((1, 0, 2)))
