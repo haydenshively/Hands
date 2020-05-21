@@ -25,5 +25,6 @@ if __name__ == '__main__':
     from training.nyu import train, test, NUM_KEYPOINT
     
     a2j = A2J(backbone, num_classes=NUM_KEYPOINT)
-    train(a2j)
+    a2j = a2j.cuda()
+    #train(a2j)
     test(a2j)

@@ -28,14 +28,14 @@ u0 = 320
 v0 = 240
 # Specify image directories
 camera_id = 1
-image_dir_train = '/Volumes/T7 Touch/datasets/hands/NYU/train'
-image_dir__test = '/Volumes/T7 Touch/datasets/hands/NYU/test'
+image_dir_train = '/hdd/datasets/hands/nyu_hand_dataset/train'
+image_dir__test = '/hdd/datasets/hands/nyu_hand_dataset/test'
 # Specify files containing coords of hand centers
 centers_train = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_train_refined.txt'
 centers__test = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_test_refined.txt'
 # Specify files containing coords of hand keypoints
-keypoint_file_train = '/Volumes/T7 Touch/datasets/hands/NYU/train/joint_data.mat'
-keypoint_file__test = '/Volumes/T7 Touch/datasets/hands/NYU/test/joint_data.mat'
+keypoint_file_train = '/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat'
+keypoint_file__test = '/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
 # Specify output directory and files
 save_dir = 'results'
 model_dir = 'NYU_batch_64_12345.pth'
@@ -219,7 +219,7 @@ def train(net):
         Reg_loss_add = 0.0
 
         for i, (img, label) in enumerate(dataloader_train):
-            # img, label = img.cuda(), label.cuda()
+            img, label = img.cuda(), label.cuda()
 
             heads = net(img)
             optimizer.zero_grad()
@@ -257,7 +257,7 @@ def train(net):
 
             for i, (img, label) in tqdm(enumerate(dataloader__test)):
                 with torch.no_grad():
-                    # img, label = img.cuda(), label.cuda()
+                    img, label = img.cuda(), label.cuda()
                     heads = net(img)
                     pred_keypoints = post_process(heads)
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
@@ -274,13 +274,11 @@ def train(net):
 
 
 
-def test():
-    net = model.A2J_model(num_classes = NUM_KEYPOINT)
-    net.load_state_dict(torch.load(model_dir))
-    net = net.cuda()
+def test(net):
+    net.load_state_dict(torch.load('results/net_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth'))
     net.eval()
 
-    post_process = anchor.post_process(shape=[IMG_HEIGHT//16,IMG_WIDTH//16],stride=16,P_h=None, P_w=None)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28,IMG_WIDTH//28], stride=16)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
@@ -288,7 +286,7 @@ def test():
 
             img, label = img.cuda(), label.cuda()
             heads = net(img)
-            pred_keypoints = post_process(heads,voting=False)
+            pred_keypoints = post_process(heads)
             output = torch.cat([output,pred_keypoints.data.cpu()], 0)
 
 

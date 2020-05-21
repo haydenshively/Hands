@@ -11,7 +11,7 @@ class A2JPostProcess(nn.Module):
 
         anchor_cluster = util.generate_anchor_cluster(P_h=P_h, P_w=P_w)
         anchor_coords = util.replicate(anchor_cluster, shape, stride)
-        anchor_coords = torch.from_numpy(anchor_coords).float()#cuda()
+        anchor_coords = torch.from_numpy(anchor_coords).float().cuda()
 
         self.anchor_coords = anchor_coords
         self.is_3D = is_3D
