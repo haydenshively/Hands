@@ -73,11 +73,13 @@ SPATIAL_FACTOR = params['model']['spatial_factor']
 
 
 '''----------------------------------------------------------------------------------------------------------------------------------------------------------LOADING COORDS'''
+joints_to_use = np.zeros(36, dtype='bool')
+joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
 # Load coords from train set
 keypointsUVD_train = scio.loadmat(keypoint_file_train)['joint_uvd'].astype(np.float32)
 keypointsUVD__test = scio.loadmat(keypoint_file__test)['joint_uvd'].astype(np.float32)
-keypointsUVD_train = keypointsUVD_train[camera_id - 1]
-keypointsUVD__test = keypointsUVD__test[camera_id - 1]
+keypointsUVD_train = keypointsUVD_train[camera_id - 1, joints_to_use]
+keypointsUVD__test = keypointsUVD__test[camera_id - 1, joints_to_use]
 center_train = keypointsUVD_train.mean(axis=1)
 center__test = keypointsUVD__test.mean(axis=1)
 sizes_train = keypointsUVD_train[:,:,:2].ptp(axis=1).max(axis=1)/2.0 + THRESH_XY
@@ -199,8 +201,8 @@ dataloader__test = torch.utils.data.DataLoader(dataset__test, batch_size=BATCH_S
 
 
 def train(net):
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28, IMG_WIDTH//28], 16)
-    criterion = A2JLoss(None, None, [IMG_HEIGHT//28, IMG_WIDTH//28], 16, SPATIAL_FACTOR)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//16, IMG_WIDTH//16], 16)
+    criterion = A2JLoss(None, None, [IMG_HEIGHT//16, IMG_WIDTH//16], 16, SPATIAL_FACTOR)
     optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
@@ -278,7 +280,7 @@ def test(net):
     net.load_state_dict(torch.load('results/net_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth'))
     net.eval()
 
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28,IMG_WIDTH//28], stride=16)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//16,IMG_WIDTH//16], stride=16)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
