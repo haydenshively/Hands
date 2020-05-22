@@ -22,9 +22,23 @@ if __name__ == '__main__':
     backbone = MNV3Backbone(config)
 
 
+    saved = torch.load('mbv3_small.pth.tar', map_location=torch.device('cpu'))
+    state_dict = OrderedDict()
+    for key in saved['state_dict']:
+        if key.startswith('module.'):
+            state_dict[key[7:]] = saved['state_dict'][key]
+        else:
+            state_dict[key] = saved['state_dict'][key]
+    backbone.load_state_dict(state_dict)
+
+
+    for param in backbone.parameters():
+        param.requires_grad = False
+
+
     from training.nyu import train, test, NUM_KEYPOINT
-    
+
     a2j = A2J(backbone, num_classes=NUM_KEYPOINT)
     a2j = a2j.cuda()
-    #train(a2j)
+    train(a2j)
     test(a2j)

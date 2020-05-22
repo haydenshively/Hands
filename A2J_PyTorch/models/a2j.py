@@ -14,8 +14,10 @@ class AnchorProposal(Regression):
 
 from .mobilenetv3 import MobileNetV3
 class MNV3Backbone(MobileNetV3):
-    def __init__(self, config):
-        super().__init__(config, truncated=True)
+    def __init__(self, config, pretrained=True):
+        # setting truncated=False will add unnecessary layers, but those layers
+        # are necessary in order to load pre-trained weights
+        super().__init__(config, truncated=(not pretrained))
     def forward(self, x):
         # get depth and clone across channels for compatibility
         n, c, h, w = x.size()
