@@ -1,5 +1,8 @@
 if __name__ == '__main__':
+    import torch
     import torch.nn as nn
+
+    from collections import OrderedDict
 
     from activations import h_sigmoid, h_swish
     from blocks import SqueezeExcite
