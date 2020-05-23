@@ -28,14 +28,11 @@ u0 = 320
 v0 = 240
 # Specify image directories
 camera_id = 1
-image_dir_train = '/hdd/datasets/hands/nyu_hand_dataset/train'
-image_dir__test = '/hdd/datasets/hands/nyu_hand_dataset/test'
-# Specify files containing coords of hand centers
-centers_train = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_train_refined.txt'
-centers__test = '/Volumes/T7 Touch/datasets/hands/_centers/NYU/center_test_refined.txt'
+image_dir_train = '/Volumes/T7 Touch/datasets/hands/NYU/train'#'/hdd/datasets/hands/nyu_hand_dataset/train'
+image_dir__test = '/Volumes/T7 Touch/datasets/hands/NYU/test'#'/hdd/datasets/hands/nyu_hand_dataset/test'
 # Specify files containing coords of hand keypoints
-keypoint_file_train = '/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat'
-keypoint_file__test = '/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
+keypoint_file_train = '/Volumes/T7 Touch/datasets/hands/NYU/train/joint_data.mat'#'/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat'
+keypoint_file__test = '/Volumes/T7 Touch/datasets/hands/NYU/test/joint_data.mat'#'/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
 # Specify output directory and files
 save_dir = 'results'
 model_dir = 'NYU_batch_64_12345.pth'
@@ -78,15 +75,10 @@ joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
 # Load coords from train set
 keypointsUVD_train = scio.loadmat(keypoint_file_train)['joint_uvd'].astype(np.float32)
 keypointsUVD__test = scio.loadmat(keypoint_file__test)['joint_uvd'].astype(np.float32)
-print(keypointsUVD_train.shape)
-
 keypointsUVD_train = keypointsUVD_train[camera_id - 1]
 keypointsUVD__test = keypointsUVD__test[camera_id - 1]
-print(keypointsUVD_train.shape)
-
 keypointsUVD_train = keypointsUVD_train[:, joints_to_use, :]
 keypointsUVD__test = keypointsUVD__test[:, joints_to_use, :]
-print(keypointsUVD_train.shape)
 
 center_train = keypointsUVD_train.mean(axis=1)
 center__test = keypointsUVD__test.mean(axis=1)
@@ -208,9 +200,9 @@ dataloader__test = torch.utils.data.DataLoader(dataset__test, batch_size=BATCH_S
 
 
 
-def train(net):
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16)
-    criterion = A2JLoss(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16, SPATIAL_FACTOR)
+def train(net, use_gpu=False):
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16, use_gpu=use_gpu)
+    criterion = A2JLoss(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16, SPATIAL_FACTOR, use_gpu=use_gpu)
     optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
@@ -229,7 +221,8 @@ def train(net):
         Reg_loss_add = 0.0
 
         for i, (img, label) in enumerate(dataloader_train):
-            img, label = img.cuda(), label.cuda()
+            if use_gpu:
+                img, label = img.cuda(), label.cuda()
 
             heads = net(img)
             optimizer.zero_grad()
@@ -267,7 +260,8 @@ def train(net):
 
             for i, (img, label) in tqdm(enumerate(dataloader__test)):
                 with torch.no_grad():
-                    img, label = img.cuda(), label.cuda()
+                    if use_gpu:
+                        img, label = img.cuda(), label.cuda()
                     heads = net(img)
                     pred_keypoints = post_process(heads)
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
@@ -284,17 +278,17 @@ def train(net):
 
 
 
-def test(net):
-    net.load_state_dict(torch.load('results/net_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth'))
+def test(net, use_gpu=False):
+    net.load_state_dict(torch.load('results/fin_34_0.0001_depFact_0.5_RegFact_3_rndShft_5_14_pretrained.pth', map_location=torch.device('cpu')))
     net.eval()
 
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//16,IMG_WIDTH//16], stride=16)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//32,IMG_WIDTH//32], stride=16, use_gpu=use_gpu)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
         with torch.no_grad():
-
-            img, label = img.cuda(), label.cuda()
+            if use_gpu:
+                img, label = img.cuda(), label.cuda()
             heads = net(img)
             pred_keypoints = post_process(heads)
             output = torch.cat([output,pred_keypoints.data.cpu()], 0)
@@ -302,49 +296,35 @@ def test(net):
 
     result = output.cpu().data.numpy()
     writeTxt(result, center__test)
-    # error = errorCompute(result, keypointsUVD__test, center__test)
-    # print('Error:', error)
+    error = errorCompute(result, keypointsUVD__test, center__test)
+    print('Error:', error)
 
 
-# def errorCompute(source, target, center):
-#     assert np.shape(source)==np.shape(target), "source has different shape with target"
-#
-#     Test1_ = source.copy()
-#     target_ = target.copy()
-#     Test1_[:, :, 0] = source[:,:,1]
-#     Test1_[:, :, 1] = source[:,:,0]
-#     Test1 = Test1_  # [x, y, z]
-#
-#     center_pixel = center.copy()
-#     centre_world = pixel2world(center.copy(), fx, fy, u0, v0)
-#
-#     centerlefttop = centre_world.copy()
-#     centerlefttop[:,0,0] = centerlefttop[:,0,0]-THRESH_XY
-#     centerlefttop[:,0,1] = centerlefttop[:,0,1]+THRESH_XY
-#
-#     centerrightbottom = centre_world.copy()
-#     centerrightbottom[:,0,0] = centerrightbottom[:,0,0]+THRESH_XY
-#     centerrightbottom[:,0,1] = centerrightbottom[:,0,1]-THRESH_XY
-#
-#     lefttop_pixel = world2pixel(centerlefttop, fx, fy, u0, v0)
-#     rightbottom_pixel = world2pixel(centerrightbottom, fx, fy, u0, v0)
-#
-#     for i in range(len(Test1_)):
-#         Xmin = max(lefttop_pixel[i,0,0], 0)
-#         Ymin = max(lefttop_pixel[i,0,1], 0)
-#         Xmax = min(rightbottom_pixel[i,0,0], 320*2 - 1)
-#         Ymax = min(rightbottom_pixel[i,0,1], 240*2 - 1)
-#
-#         Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
-#         Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
-#         Test1[i,:,2] = source[i,:,2] + center[i][0][2]
-#
-#     labels = pixel2world(target_, fx, fy, u0, v0)
-#     outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
-#
-#     errors = np.sqrt(np.sum((labels - outputs) ** 2, axis=2))
-#
-#     return np.mean(errors)
+def errorCompute(source, target, center):
+    assert np.shape(source)==np.shape(target), "source has different shape with target"
+
+    Test1_ = source.copy()
+    target_ = target.copy()
+    Test1_[:,:,0] = source[:,:,1]
+    Test1_[:,:,1] = source[:,:,0]
+    Test1 = Test1_  # [x, y, z]
+
+    for i in range(len(Test1_)):
+        Xmin = max(lefttop_pixel__test[i,0], 0)
+        Ymin = max(lefttop_pixel__test[i,1], 0)
+        Xmax = min(rightbottom_pixel__test[i,0], u0*2 - 1)
+        Ymax = min(rightbottom_pixel__test[i,1], v0*2 - 1)
+
+        Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
+        Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
+        Test1[i,:,2] = source[i,:,2] + center[i][0][2]
+
+    labels = pixel2world(target_, fx, fy, u0, v0)
+    outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
+
+    errors = np.sqrt(np.sum((labels - outputs) ** 2, axis=2))
+
+    return np.mean(errors)
 
 def writeTxt(result, center):
 
@@ -353,29 +333,14 @@ def writeTxt(result, center):
     resultUVD_[:, :, 1] = result[:,:,0]
     resultUVD = resultUVD_  # [x, y, z]
 
-    center_pixel = center.copy()
-    centre_world = pixel2world(center.copy(), fx, fy, u0, v0)
-
-    centerlefttop = centre_world.copy()
-    centerlefttop[:,0,0] = centerlefttop[:,0,0]-THRESH_XY
-    centerlefttop[:,0,1] = centerlefttop[:,0,1]+THRESH_XY
-
-    centerrightbottom = centre_world.copy()
-    centerrightbottom[:,0,0] = centerrightbottom[:,0,0]+THRESH_XY
-    centerrightbottom[:,0,1] = centerrightbottom[:,0,1]-THRESH_XY
-
-    lefttop_pixel = world2pixel(centerlefttop, fx, fy, u0, v0)
-    rightbottom_pixel = world2pixel(centerrightbottom, fx, fy, u0, v0)
-
-
     for i in range(len(result)):
-        Xmin = max(lefttop_pixel[i,0,0], 0)
-        Ymin = max(lefttop_pixel[i,0,1], 0)
-        Xmax = min(rightbottom_pixel[i,0,0], 320*2 - 1)
-        Ymax = min(rightbottom_pixel[i,0,1], 240*2 - 1)
+        Xmin = max(lefttop_pixel__test[i,0], 0)
+        Ymin = max(lefttop_pixel__test[i,1], 0)
+        Xmax = min(rightbottom_pixel__test[i,0], u0*2 - 1)
+        Ymax = min(rightbottom_pixel__test[i,1], v0*2 - 1)
 
-        resultUVD[i,:,0] = resultUVD_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
-        resultUVD[i,:,1] = resultUVD_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
+        resultUVD[i,:,0] = resultUVD_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin
+        resultUVD[i,:,1] = resultUVD_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin
         resultUVD[i,:,2] = result[i,:,2] + center[i][0][2]
 
     resultReshape = resultUVD.reshape(len(result), -1)
