@@ -21,9 +21,6 @@ class A2JLoss(nn.Module):
         self.spatialFactor = spatialFactor
 
     def forward(self, heads, annotations):
-        alpha = 0.25
-        gamma = 2.0
-
         if self.is_3D:
             responses, offsets, depths = heads
         else:

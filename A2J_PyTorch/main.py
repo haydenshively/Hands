@@ -20,28 +20,13 @@ if __name__ == '__main__':
         [5, 1, 240, 40, 1,      h_swish(), SqueezeExcite(40)],
         [5, 1, 120, 48, 1,      h_swish(), SqueezeExcite(48)],
         [5, 1, 144, 48, 1,      h_swish(), SqueezeExcite(48)],
+        [5, 2, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
         [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, 1,      h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, 1,      h_swish(), SqueezeExcite(96)]
-    ]
+        [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)]
+    ]# NOTE: A2J paper says dilation of last 2 layers should be 2
 
 
-    if '--pretrained' in sys.argv:
-        backbone = MNV3Backbone(config, pretrained=True)
-
-        saved = torch.load('mbv3_small.pth.tar', map_location=torch.device('cpu'))
-        state_dict = OrderedDict()
-        for key in saved['state_dict']:
-            if key.startswith('module.'):
-                state_dict[key[7:]] = saved['state_dict'][key]
-            else:
-                state_dict[key] = saved['state_dict'][key]
-        backbone.load_state_dict(state_dict)
-
-        for param in backbone.parameters():
-            param.requires_grad = False
-    else:
-        backbone = MNV3Backbone(config, pretrained=False)
+    backbone = MNV3Backbone(config, index_C4=9)
 
 
     a2j = A2J(backbone, num_classes=NUM_KEYPOINT)

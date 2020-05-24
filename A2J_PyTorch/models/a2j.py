@@ -14,21 +14,20 @@ class AnchorProposal(Regression):
 
 from .mobilenetv3 import MobileNetV3
 class MNV3Backbone(MobileNetV3):
-    def __init__(self, config, pretrained=True):
-        # setting truncated=False will add unnecessary layers, but those layers
-        # are necessary in order to load pre-trained weights
-        super().__init__(config, truncated=(not pretrained))
+    def __init__(self, config, index_C4):
+        super().__init__(config, index_C4, truncated=True)
     def forward(self, x):
         # get depth and clone across channels for compatibility
         n, c, h, w = x.size()
         x = x.expand(n, 3, h, w)
         # now run it through the model
+        # C4 layer should be 16x downsampling
+        # C5 layer should be 32x downsampling
         x = self.hs1(self.bn1(self.conv1(x)))
-        x3 = self.bneck(x)
-        print(x3.size())
-        x4 = self.hs2(self.bn2(self.conv2(x3)))
-        print(x4.size())
-        return x3, x4
+        c4 = self.bneck(x)
+        x = self.bneck2(c4)
+        c5 = self.hs2(self.bn2(self.conv2(x)))
+        return c4, c5
 
 
 class A2J(nn.Module):
@@ -43,12 +42,12 @@ class A2J(nn.Module):
             self.predict_depth = DepthRegression(576, num_classes=num_classes)
 
     def forward(self, x):
-        x3, x4 = self.backbone(x)
+        c4, c5 = self.backbone(x)
 
-        responses = self.response_map(x3)
-        offsets = self.predict_offset(x4)
+        responses = self.response_map(c4)
+        offsets = self.predict_offset(c5)
         if self.is_3D:
-            depths = self.predict_depth(x4)
+            depths = self.predict_depth(c5)
             return (responses, offsets, depths)
 
         return (responses, offsets)
