@@ -72,10 +72,10 @@ ANCHOR_STRIDE = 16
 
 
 '''----------------------------------------------------------------------------------------------------------------------------------------------------------LOADING COORDS'''
-joints_to_use = np.zeros(NUM_KEYPOINT, dtype='bool')
+joints_to_use = np.zeros(36, dtype='bool')
 if NUM_KEYPOINT == 36:
     joints_to_use[:] = True
-elif NUM_KEYPOINT = 14:
+elif NUM_KEYPOINT == 14:
     joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
 else:
     print('To use {} keypoints, please specify which of the 36 joints should be omitted')

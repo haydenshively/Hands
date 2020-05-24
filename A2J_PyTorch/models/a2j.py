@@ -25,7 +25,9 @@ class MNV3Backbone(MobileNetV3):
         # now run it through the model
         x = self.hs1(self.bn1(self.conv1(x)))
         x3 = self.bneck(x)
+        print(x3.size())
         x4 = self.hs2(self.bn2(self.conv2(x3)))
+        print(x4.size())
         return x3, x4
 
 
