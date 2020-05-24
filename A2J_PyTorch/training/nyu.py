@@ -163,6 +163,7 @@ def preprocess(index, img, keypointsUVD, center, lefttop_pixel, rightbottom_pixe
     labels_out[:,0] = label_xy[:,1]
     # ** (finally) Apply scale to z labels
     labels_out[:,2] = (keypointsUVD[index,:,2] - center[index,2]) * random_scale
+    # TODO why not scaled by MEAN and STD like the grayscale values are?
 
     return torch.from_numpy(images_out), torch.from_numpy(labels_out)
 

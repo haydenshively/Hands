@@ -20,7 +20,7 @@ if __name__ == '__main__':
         [5, 1, 240, 40, 1,      h_swish(), SqueezeExcite(40)],
         [5, 1, 120, 48, 1,      h_swish(), SqueezeExcite(48)],
         [5, 1, 144, 48, 1,      h_swish(), SqueezeExcite(48)],
-        [5, 2, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
+        [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
         [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
         [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)]
     ]# NOTE: A2J paper says dilation of last 2 layers should be 2

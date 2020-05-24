@@ -43,12 +43,13 @@ class Bottleneck(nn.Module):
             )
 
     def forward(self, x):
+        if isinstance(x, tuple): x = x[0]
         # pointwise
-        out = self.nolinear1(self.bn1(self.conv1(x)))
+        exp = self.nolinear1(self.bn1(self.conv1(x)))
         # depthwise
-        exp = self.nolinear2(self.bn2(self.conv2(out)))
+        out = self.nolinear2(self.bn2(self.conv2(exp)))
         # pointwise-linear
-        out = self.bn3(self.conv3(exp))
+        out = self.bn3(self.conv3(out))
         # squeeze and excitation
         out = self.se(out)
         out = out + self.shortcut(x) if self.use_shortcut else out

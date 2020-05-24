@@ -25,7 +25,7 @@ class MNV3Backbone(MobileNetV3):
         # C5 layer should be 32x downsampling
         x = self.hs1(self.bn1(self.conv1(x)))
         x, c4 = self.bneck(x)
-        x = self.bneck2(c4)[0]
+        x = self.bneck2(x)[0]
         c5 = self.hs2(self.bn2(self.conv2(x)))
         return c4, c5
 
@@ -36,10 +36,10 @@ class A2J(nn.Module):
         self.is_3D = is_3D
 
         self.backbone = backbone
-        self.response_map = AnchorProposal(96, num_classes=num_classes)# 288
-        self.predict_offset = InPlaneRegression(576, num_classes=num_classes)
+        self.response_map = AnchorProposal(288, num_classes=num_classes)
+        self.predict_offset = InPlaneRegression(288, num_classes=num_classes)
         if self.is_3D:
-            self.predict_depth = DepthRegression(576, num_classes=num_classes)
+            self.predict_depth = DepthRegression(288, num_classes=num_classes)
 
     def forward(self, x):
         c4, c5 = self.backbone(x)
