@@ -67,7 +67,7 @@ EPOCHS = params['training']['epochs']
 REG_LOSS_FACTOR = params['model']['reg_loss_factor']
 SPATIAL_FACTOR = params['model']['spatial_factor']
 # Anchors
-IMG_DIV = 28
+IMG_DIV = 16
 ANCHOR_STRIDE = 16
 
 
