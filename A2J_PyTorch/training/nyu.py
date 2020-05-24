@@ -145,7 +145,7 @@ def preprocess(index, img, keypointsUVD, center, lefttop_pixel, rightbottom_pixe
     # Set center pixel's color to be 0, then stretch Z direction by random_scale
     resized = (resized - center[index,2]) * random_scale
     # Same thing, but for MEAN and STD of the dataset
-    resized = (resized - MEAN) / STD# TODO how much does this impact results
+    #resized = (resized - MEAN) / STD# TODO how much does this impact results
     # DEAL WITH LABELS
     label_xy = np.ones((NUM_KEYPOINT, 2), dtype = 'float32')
     label_xy[:,0] = (keypointsUVD[index,:,0].copy() - new_Xmin) * IMG_WIDTH / (new_Xmax - new_Xmin)
@@ -208,9 +208,9 @@ dataloader__test = torch.utils.data.DataLoader(dataset__test, batch_size=BATCH_S
 
 
 
-def train(net, use_gpu=False):
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu)
-    criterion = A2JLoss(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, SPATIAL_FACTOR, use_gpu=use_gpu)
+def train(net, use_gpu=False, is_3D=True):
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu, is_3D=is_3D)
+    criterion = A2JLoss(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, SPATIAL_FACTOR, use_gpu=use_gpu, is_3D=is_3D)
     optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
@@ -272,11 +272,11 @@ def train(net, use_gpu=False):
                     pred_keypoints = post_process(heads)
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
 
-            result = output.cpu().data.numpy()
-            Error_test = errorCompute(result, keypointsUVD__test, center__test)
-            print('Test error for epoch ', epoch, ' is ', Error_test)
             saveNamePrefix = '%s/Model%d_' % (save_dir, epoch) + str(SPATIAL_FACTOR) + '_' + str(REG_LOSS_FACTOR) + '_%d_%dx%d_%d_%d' % (NUM_KEYPOINT, IMG_WIDTH, IMG_HEIGHT, IMG_DIV, ANCHOR_STRIDE)
             torch.save(net.state_dict(), saveNamePrefix + '.pth')
+            result = output.cpu().data.numpy()
+            error = errorCompute(result, keypointsUVD__test, center__test)
+            print('Error:', error)
 
         # log
         logging.info('Epoch#%d: total loss=%.4f, Cls_loss=%.4f, Reg_loss=%.4f, Err_test=%.4f, lr = %.6f'
@@ -284,11 +284,11 @@ def train(net, use_gpu=False):
 
 
 
-def test(net, use_gpu=False):
-    net.load_state_dict(torch.load('results/fin_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth', map_location=torch.device('cpu')))
+def test(net, use_gpu=False, is_3D=True):
+    net.load_state_dict(torch.load('results/Model0_0.5_3_14_256x256_16_16.pth', map_location=torch.device('cpu')))
     net.eval()
 
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu, is_3D=is_3D)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
@@ -301,32 +301,46 @@ def test(net, use_gpu=False):
 
 
     result = output.cpu().data.numpy()
-    writeTxt(result, center__test)
+    #writeTxt(result, center__test)
     error = errorCompute(result, keypointsUVD__test, center__test)
     print('Error:', error)
 
 
-def errorCompute(source, target, center):
-    assert np.shape(source)==np.shape(target), "source has different shape with target"
+def errorCompute(pred, target, center):
+    target = target.copy()
 
-    Test1_ = source.copy()
-    target_ = target.copy()
-    Test1_[:,:,0] = source[:,:,1]
-    Test1_[:,:,1] = source[:,:,0]
-    Test1 = Test1_  # [x, y, z]
+    pred_3c = np.zeros_like(target)
+    pred_3c[:,:,0] = pred[:,:,1]
+    pred_3c[:,:,1] = pred[:,:,0]
+    if pred.shape[-1] == 3:
+        pred_3c[:,:,2] = pred[:,:,2] + np.expand_dims(center[:,2], axis=1)
+    else:
+        pred_3c[:,:,2] = target[:,:,2]
 
-    for i in range(len(Test1_)):
-        Xmin = max(lefttop_pixel__test[i,0], 0)
-        Ymin = max(lefttop_pixel__test[i,1], 0)
-        Xmax = min(rightbottom_pixel__test[i,0], u0*2 - 1)
-        Ymax = min(rightbottom_pixel__test[i,1], v0*2 - 1)
+    minXY = lefttop_pixel__test.copy()
+    minXY[minXY < 0] = 0
+    maxX = rightbottom_pixel__test[:,0].copy()
+    maxX[maxX > u0*2 - 1] = u0*2 - 1
+    maxY = rightbottom_pixel__test[:,1].copy()
+    maxY[maxY > v0*2 - 1] = v0*2 - 1
 
-        Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
-        Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
-        Test1[i,:,2] = source[i,:,2] + center[i][2]
+    pred_3c[:,:,0] *= np.expand_dims((maxX - minXY[:,0]) / IMG_WIDTH, axis=1)
+    pred_3c[:,:,1] *= np.expand_dims((maxY - minXY[:,1]) / IMG_HEIGHT, axis=1)
+    pred_3c[:,:,:2] += np.expand_dims(minXY, axis=1)
 
-    labels = pixel2world(target_, fx, fy, u0, v0)
-    outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
+    #for i in range(len(Test1_)):
+    #    Xmin = max(lefttop_pixel__test[i,0], 0)
+    #    Ymin = max(lefttop_pixel__test[i,1], 0)
+    #    Xmax = min(rightbottom_pixel__test[i,0], u0*2 - 1)
+    #    Ymax = min(rightbottom_pixel__test[i,1], v0*2 - 1)
+
+    #    pred_3c[i,:,0] = pred_3c[i,:,0] * (Xmax-Xmin)/IMG_WIDTH + Xmin  # x
+    #    pred_3c[i,:,1] = pred_3c[i,:,1] * (Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
+    #    if target.shape[-1] == 3:
+    #        Test1[i,:,2] = pred[i,:,2] + center[i][2]
+
+    labels = pixel2world(target, fx, fy, u0, v0)
+    outputs = pixel2world(pred_3c, fx, fy, u0, v0)
 
     errors = np.sqrt(np.sum((labels - outputs) ** 2, axis=2))
 

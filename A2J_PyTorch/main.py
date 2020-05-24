@@ -28,14 +28,14 @@ if __name__ == '__main__':
 
     backbone = MNV3Backbone(config, index_C4=9)
 
-
-    a2j = A2J(backbone, num_classes=NUM_KEYPOINT)
+    is_3D = '--3d' in sys.argv
+    a2j = A2J(backbone, num_classes=NUM_KEYPOINT, is_3D=is_3D)
     use_gpu = '--gpu' in sys.argv
     if use_gpu:
         a2j = a2j.cuda()
 
 
     if '--train' in sys.argv:
-        train(a2j, use_gpu)
+        train(a2j, use_gpu, is_3D)
     if '--test' in sys.argv:
-        test(a2j, use_gpu)
+        test(a2j, use_gpu, is_3D)
