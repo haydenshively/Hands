@@ -6,8 +6,8 @@
   },
   "preprocessing": {
     "crop": {
-      "width": 176,
-      "height": 176
+      "width": 256,
+      "height": 256
     },
     "rand_shift": {
       "xy": 5,

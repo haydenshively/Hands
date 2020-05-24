@@ -16,8 +16,8 @@ class MobileNetV3(nn.Module):
         self.hs1 = h_swish()
 
         bneck = []
-        for k, s, exp, oup, nl, se in config:
-            bneck.append(Bottleneck(k, s, inp, exp, oup, nl, se))
+        for k, s, exp, oup, dil, nl, se in config:
+            bneck.append(Bottleneck(k, s, inp, exp, oup, nl, se, dil))
             inp = oup
         self.bneck = nn.Sequential(*bneck)
 
@@ -61,39 +61,39 @@ class MobileNetV3(nn.Module):
 
 def mobilenetv3_large(**kwargs):
     config = [
-        #k, s, ex, out,  nl,                    se
-        [3, 1, 16,  16,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 2, 64,  24,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 1, 72,  24,  nn.ReLU(inplace=True), nn.Identity()],
-        [5, 2, 72,  40,  nn.ReLU(inplace=True), SqueezeExcite(40)],
-        [5, 1, 120, 40,  nn.ReLU(inplace=True), SqueezeExcite(40)],
-        [5, 1, 120, 40,  nn.ReLU(inplace=True), SqueezeExcite(40)],
-        [3, 2, 240, 80,  h_swish(), nn.Identity()],
-        [3, 1, 200, 80,  h_swish(), nn.Identity()],
-        [3, 1, 184, 80,  h_swish(), nn.Identity()],
-        [3, 1, 184, 80,  h_swish(), nn.Identity()],
-        [3, 1, 480, 112, h_swish(), SqueezeExcite(112)],
-        [3, 1, 672, 112, h_swish(), SqueezeExcite(112)],
-        [5, 1, 672, 160, h_swish(), SqueezeExcite(160)],
-        [5, 2, 672, 160, h_swish(), SqueezeExcite(160)],
-        [5, 1, 960, 160, h_swish(), SqueezeExcite(160)]
+        #k, s, ex, out,  dil,   nl,                    se
+        [3, 1, 16,  16,  1,     nn.ReLU(inplace=True), nn.Identity()],
+        [3, 2, 64,  24,  1,     nn.ReLU(inplace=True), nn.Identity()],
+        [3, 1, 72,  24,  1,     nn.ReLU(inplace=True), nn.Identity()],
+        [5, 2, 72,  40,  1,     nn.ReLU(inplace=True), SqueezeExcite(40)],
+        [5, 1, 120, 40,  1,     nn.ReLU(inplace=True), SqueezeExcite(40)],
+        [5, 1, 120, 40,  1,     nn.ReLU(inplace=True), SqueezeExcite(40)],
+        [3, 2, 240, 80,  1,     h_swish(), nn.Identity()],
+        [3, 1, 200, 80,  1,     h_swish(), nn.Identity()],
+        [3, 1, 184, 80,  1,     h_swish(), nn.Identity()],
+        [3, 1, 184, 80,  1,     h_swish(), nn.Identity()],
+        [3, 1, 480, 112, 1,     h_swish(), SqueezeExcite(112)],
+        [3, 1, 672, 112, 1,     h_swish(), SqueezeExcite(112)],
+        [5, 1, 672, 160, 1,     h_swish(), SqueezeExcite(160)],
+        [5, 2, 672, 160, 1,     h_swish(), SqueezeExcite(160)],
+        [5, 1, 960, 160, 1,     h_swish(), SqueezeExcite(160)]
     ]
     return MobileNetV3(config, **kwargs)
 
 
 def mobilenetv3_small(**kwargs):
     config = [
-        #k, s, ex, out, nl,                    se
-        [3, 2, 16, 16,  nn.ReLU(inplace=True), SqueezeExcite(16)],
-        [3, 2, 72, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 1, 88, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [5, 2, 96, 40,  h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 120, 48, h_swish(), SqueezeExcite(48)],
-        [5, 1, 144, 48, h_swish(), SqueezeExcite(48)],
-        [5, 2, 288, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
+        #k, s, ex, out, dil,   nl,                    se
+        [3, 2, 16, 16,  1,     nn.ReLU(inplace=True), SqueezeExcite(16)],
+        [3, 2, 72, 24,  1,     nn.ReLU(inplace=True), nn.Identity()],
+        [3, 1, 88, 24,  1,     nn.ReLU(inplace=True), nn.Identity()],
+        [5, 2, 96, 40,  1,     h_swish(), SqueezeExcite(40)],
+        [5, 1, 240, 40, 1,     h_swish(), SqueezeExcite(40)],
+        [5, 1, 240, 40, 1,     h_swish(), SqueezeExcite(40)],
+        [5, 1, 120, 48, 1,     h_swish(), SqueezeExcite(48)],
+        [5, 1, 144, 48, 1,     h_swish(), SqueezeExcite(48)],
+        [5, 2, 288, 96, 1,     h_swish(), SqueezeExcite(96)],
+        [5, 1, 576, 96, 1,     h_swish(), SqueezeExcite(96)],
+        [5, 1, 576, 96, 1,     h_swish(), SqueezeExcite(96)]
     ]
     return MobileNetV3(config, **kwargs)

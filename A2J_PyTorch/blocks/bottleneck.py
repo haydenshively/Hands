@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 class Bottleneck(nn.Module):
-    def __init__(self, kernel, stride, in_size, expand_size, out_size, nlin_layer, se_layer):
+    def __init__(self, kernel, stride, in_size, expand_size, out_size, nlin_layer, se_layer, dilation=1):
         super(Bottleneck, self).__init__()
         assert stride in [1, 2]
         assert kernel in [3, 5]
@@ -27,7 +27,7 @@ class Bottleneck(nn.Module):
         self.bn1 = nn.BatchNorm2d(expand_size)
         self.nolinear1 = nlin_layer
         # depthwise
-        self.conv2 = nn.Conv2d(expand_size, expand_size, kernel_size=kernel, stride=stride, padding=kernel//2, groups=expand_size, bias=False)
+        self.conv2 = nn.Conv2d(expand_size, expand_size, kernel_size=kernel, stride=stride, padding=kernel//2, dilation=dilation, groups=expand_size, bias=False)
         self.bn2 = nn.BatchNorm2d(expand_size)
         self.nolinear2 = nlin_layer
         # pointwise-linear

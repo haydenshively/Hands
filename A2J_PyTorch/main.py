@@ -11,18 +11,18 @@ if __name__ == '__main__':
     from training.nyu import train, test, NUM_KEYPOINT
 
     config = [
-        #k, s, ex, out, nl,                    se
-        [3, 2, 16, 16,  nn.ReLU(inplace=True), SqueezeExcite(16)],
-        [3, 2, 72, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [3, 1, 88, 24,  nn.ReLU(inplace=True), nn.Identity()],
-        [5, 2, 96, 40,  h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 240, 40, h_swish(), SqueezeExcite(40)],
-        [5, 1, 120, 48, h_swish(), SqueezeExcite(48)],
-        [5, 1, 144, 48, h_swish(), SqueezeExcite(48)],
-        [5, 2, 288, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
-        [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
+        #k, s, ex, out, dil,   nl,                    se
+        [3, 2, 16, 16,  1,      nn.ReLU(inplace=True), SqueezeExcite(16)],
+        [3, 2, 72, 24,  1,      nn.ReLU(inplace=True), nn.Identity()],
+        [3, 1, 88, 24,  1,      nn.ReLU(inplace=True), nn.Identity()],
+        [5, 2, 96, 40,  1,      h_swish(), SqueezeExcite(40)],
+        [5, 1, 240, 40, 1,      h_swish(), SqueezeExcite(40)],
+        [5, 1, 240, 40, 1,      h_swish(), SqueezeExcite(40)],
+        [5, 1, 120, 48, 1,      h_swish(), SqueezeExcite(48)],
+        [5, 1, 144, 48, 1,      h_swish(), SqueezeExcite(48)],
+        [5, 1, 288, 96, 1,      h_swish(), SqueezeExcite(96)],
+        [5, 1, 576, 96, 1,      h_swish(), SqueezeExcite(96)],
+        [5, 1, 576, 96, 1,      h_swish(), SqueezeExcite(96)]
     ]
 
 
