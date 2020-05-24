@@ -58,9 +58,9 @@ class MobileNetV3(nn.Module):
 
     def forward(self, x):
         x = self.hs1(self.bn1(self.conv1(x)))
-        x = self.bneck(x)
+        x = self.bneck(x)[0]
         if self.bneck2 is not None:
-            x = self.bneck2(x)
+            x = self.bneck2(x)[0]
         x = self.hs2(self.bn2(self.conv2(x)))
         if not self.truncated:
             x = F.avg_pool2d(x, 7)

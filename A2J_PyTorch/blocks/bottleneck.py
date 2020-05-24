@@ -46,10 +46,10 @@ class Bottleneck(nn.Module):
         # pointwise
         out = self.nolinear1(self.bn1(self.conv1(x)))
         # depthwise
-        out = self.nolinear2(self.bn2(self.conv2(out)))
+        exp = self.nolinear2(self.bn2(self.conv2(out)))
         # pointwise-linear
-        out = self.bn3(self.conv3(out))
+        out = self.bn3(self.conv3(exp))
         # squeeze and excitation
         out = self.se(out)
         out = out + self.shortcut(x) if self.use_shortcut else out
-        return out
+        return out, exp

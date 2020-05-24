@@ -24,8 +24,8 @@ class MNV3Backbone(MobileNetV3):
         # C4 layer should be 16x downsampling
         # C5 layer should be 32x downsampling
         x = self.hs1(self.bn1(self.conv1(x)))
-        c4 = self.bneck(x)
-        x = self.bneck2(c4)
+        x, c4 = self.bneck(x)
+        x = self.bneck2(c4)[0]
         c5 = self.hs2(self.bn2(self.conv2(x)))
         return c4, c5
 
