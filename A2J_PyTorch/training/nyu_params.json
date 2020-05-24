@@ -1,13 +1,13 @@
 {
-  "keypoints": 14,
+  "keypoints": 36,
   "frames": {
     "training": 72757,
     "testing": 8252
   },
   "preprocessing": {
     "crop": {
-      "width": 256,
-      "height": 256
+      "width": 176,
+      "height": 176
     },
     "rand_shift": {
       "xy": 5,

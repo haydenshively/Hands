@@ -28,11 +28,11 @@ u0 = 320
 v0 = 240
 # Specify image directories
 camera_id = 1
-image_dir_train = '/Volumes/T7 Touch/datasets/hands/NYU/train'#'/hdd/datasets/hands/nyu_hand_dataset/train'
-image_dir__test = '/Volumes/T7 Touch/datasets/hands/NYU/test'#'/hdd/datasets/hands/nyu_hand_dataset/test'
+image_dir_train = '/hdd/datasets/hands/nyu_hand_dataset/train'
+image_dir__test = '/hdd/datasets/hands/nyu_hand_dataset/test'
 # Specify files containing coords of hand keypoints
-keypoint_file_train = '/Volumes/T7 Touch/datasets/hands/NYU/train/joint_data.mat'#'/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat'
-keypoint_file__test = '/Volumes/T7 Touch/datasets/hands/NYU/test/joint_data.mat'#'/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
+keypoint_file_train = '/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat'
+keypoint_file__test = '/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
 # Specify output directory and files
 save_dir = 'results'
 model_dir = 'NYU_batch_64_12345.pth'
@@ -70,8 +70,8 @@ SPATIAL_FACTOR = params['model']['spatial_factor']
 
 
 '''----------------------------------------------------------------------------------------------------------------------------------------------------------LOADING COORDS'''
-joints_to_use = np.zeros(36, dtype='bool')
-joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
+joints_to_use = np.ones(36, dtype='bool')
+#joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
 # Load coords from train set
 keypointsUVD_train = scio.loadmat(keypoint_file_train)['joint_uvd'].astype(np.float32)
 keypointsUVD__test = scio.loadmat(keypoint_file__test)['joint_uvd'].astype(np.float32)
@@ -279,10 +279,10 @@ def train(net, use_gpu=False):
 
 
 def test(net, use_gpu=False):
-    net.load_state_dict(torch.load('results/fin_34_0.0001_depFact_0.5_RegFact_3_rndShft_5_14_pretrained.pth', map_location=torch.device('cpu')))
+    net.load_state_dict(torch.load('results/fin_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth', map_location=torch.device('cpu')))
     net.eval()
 
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//32,IMG_WIDTH//32], stride=16, use_gpu=use_gpu)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28,IMG_WIDTH//28], stride=16, use_gpu=use_gpu)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
@@ -317,7 +317,7 @@ def errorCompute(source, target, center):
 
         Test1[i,:,0] = Test1_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin  # x
         Test1[i,:,1] = Test1_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin  # y
-        Test1[i,:,2] = source[i,:,2] + center[i][0][2]
+        Test1[i,:,2] = source[i,:,2] + center[i][2]
 
     labels = pixel2world(target_, fx, fy, u0, v0)
     outputs = pixel2world(Test1.copy(), fx, fy, u0, v0)
@@ -341,7 +341,7 @@ def writeTxt(result, center):
 
         resultUVD[i,:,0] = resultUVD_[i,:,0]*(Xmax-Xmin)/IMG_WIDTH + Xmin
         resultUVD[i,:,1] = resultUVD_[i,:,1]*(Ymax-Ymin)/IMG_HEIGHT + Ymin
-        resultUVD[i,:,2] = result[i,:,2] + center[i][0][2]
+        resultUVD[i,:,2] = result[i,:,2] + center[i][2]
 
     resultReshape = resultUVD.reshape(len(result), -1)
 

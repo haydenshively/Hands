@@ -24,7 +24,7 @@ if __name__ == '__main__':
         [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
         [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
     ]
-    backbone = MNV3Backbone(config)
+    backbone = MNV3Backbone(config, pretrained=False)
 
 
     if '--pretrained' in sys.argv:
