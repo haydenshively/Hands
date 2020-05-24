@@ -1,5 +1,5 @@
 {
-  "keypoints": 36,
+  "keypoints": 14,
   "frames": {
     "training": 72757,
     "testing": 8252

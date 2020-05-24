@@ -24,10 +24,11 @@ if __name__ == '__main__':
         [5, 1, 576, 96, h_swish(), SqueezeExcite(96)],
         [5, 1, 576, 96, h_swish(), SqueezeExcite(96)]
     ]
-    backbone = MNV3Backbone(config, pretrained=False)
 
 
     if '--pretrained' in sys.argv:
+        backbone = MNV3Backbone(config, pretrained=True)
+
         saved = torch.load('mbv3_small.pth.tar', map_location=torch.device('cpu'))
         state_dict = OrderedDict()
         for key in saved['state_dict']:
@@ -39,12 +40,16 @@ if __name__ == '__main__':
 
         for param in backbone.parameters():
             param.requires_grad = False
+    else:
+        backbone = MNV3Backbone(config, pretrained=False)
 
 
     a2j = A2J(backbone, num_classes=NUM_KEYPOINT)
     use_gpu = '--gpu' in sys.argv
     if use_gpu:
         a2j = a2j.cuda()
+
+
     if '--train' in sys.argv:
         train(a2j, use_gpu)
     if '--test' in sys.argv:

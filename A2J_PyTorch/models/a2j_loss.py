@@ -20,12 +20,6 @@ class A2JLoss(nn.Module):
 
         self.spatialFactor = spatialFactor
 
-    def calc_distance(self, a, b):
-        dis = torch.zeros(a.shape[0], b.shape[0]).cuda()
-        for i in range(a.shape[1]):
-            dis += torch.pow(torch.unsqueeze(a[:,i], dim=1) - b[:,i], 0.5)
-        return dis
-
     def forward(self, heads, annotations):
         alpha = 0.25
         gamma = 2.0

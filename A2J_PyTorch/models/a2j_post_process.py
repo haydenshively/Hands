@@ -18,12 +18,6 @@ class A2JPostProcess(nn.Module):
         self.anchor_coords = anchor_coords
         self.is_3D = is_3D
 
-    def calc_distance(self, a, b):
-        dis = torch.zeros(a.shape[0], b.shape[0]).cuda()
-        for i in range(a.shape[1]):
-            dis += torch.pow(torch.unsqueeze(a[:,i], dim=1) - b[:,i], 0.5)
-        return dis
-
     def forward(self, heads):
         if self.is_3D:
             responses, offsets, depths = heads

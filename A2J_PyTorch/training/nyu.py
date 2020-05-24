@@ -35,7 +35,6 @@ keypoint_file_train = '/hdd/datasets/hands/nyu_hand_dataset/train/joint_data.mat
 keypoint_file__test = '/hdd/datasets/hands/nyu_hand_dataset/test/joint_data.mat'
 # Specify output directory and files
 save_dir = 'results'
-model_dir = 'NYU_batch_64_12345.pth'
 result_file = 'NYU_batch_64_12345.txt'
 '''----------------------------------------------------------------------------------------------------------------------------------------------------------JSON PARAMETERS'''
 params = {}
@@ -67,11 +66,19 @@ EPOCHS = params['training']['epochs']
 # Model
 REG_LOSS_FACTOR = params['model']['reg_loss_factor']
 SPATIAL_FACTOR = params['model']['spatial_factor']
+# Anchors
+IMG_DIV = 28
+ANCHOR_STRIDE = 16
 
 
 '''----------------------------------------------------------------------------------------------------------------------------------------------------------LOADING COORDS'''
-joints_to_use = np.ones(36, dtype='bool')
-#joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
+joints_to_use = np.zeros(NUM_KEYPOINT, dtype='bool')
+if NUM_KEYPOINT == 36:
+    joints_to_use[:] = True
+elif NUM_KEYPOINT = 14:
+    joints_to_use[[0, 3, 6, 9, 12, 15, 18, 21, 24, 25, 27, 30, 31, 32]] = True
+else:
+    print('To use {} keypoints, please specify which of the 36 joints should be omitted')
 # Load coords from train set
 keypointsUVD_train = scio.loadmat(keypoint_file_train)['joint_uvd'].astype(np.float32)
 keypointsUVD__test = scio.loadmat(keypoint_file__test)['joint_uvd'].astype(np.float32)
@@ -201,8 +208,8 @@ dataloader__test = torch.utils.data.DataLoader(dataset__test, batch_size=BATCH_S
 
 
 def train(net, use_gpu=False):
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16, use_gpu=use_gpu)
-    criterion = A2JLoss(None, None, [IMG_HEIGHT//32, IMG_WIDTH//32], 16, SPATIAL_FACTOR, use_gpu=use_gpu)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu)
+    criterion = A2JLoss(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, SPATIAL_FACTOR, use_gpu=use_gpu)
     optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
@@ -245,13 +252,11 @@ def train(net, use_gpu=False):
         train_loss_add = train_loss_add / NUM_FRAME_TRAIN
         Cls_loss_add = Cls_loss_add / NUM_FRAME_TRAIN
         Reg_loss_add = Reg_loss_add / NUM_FRAME_TRAIN
-        print('mean train_loss_add of 1 sample: %f, #train_indexes = %d' %(train_loss_add, NUM_FRAME_TRAIN))
-        print('mean Cls_loss_add of 1 sample: %f, #train_indexes = %d' %(Cls_loss_add, NUM_FRAME_TRAIN))
-        print('mean Reg_loss_add of 1 sample: %f, #train_indexes = %d' %(Reg_loss_add, NUM_FRAME_TRAIN))
+        print('Mean Loss per Sample:\t\t%f' % train_loss_add)
+        print('\t>from anchor heatmap:\t%f' % Cls_loss_add)
+        print('\t>from joint offsets:\t%f' % Reg_loss_add)
 
         Error_test = 0
-        Error_train = 0
-        Error_test_wrist = 0
 
         if (epoch % 1 == 0):
             net = net.eval()
@@ -267,9 +272,9 @@ def train(net, use_gpu=False):
                     output = torch.cat([output,pred_keypoints.data.cpu()], 0)
 
             result = output.cpu().data.numpy()
-            # Error_test = errorCompute(result,keypointsUVD__test, center__test)
-            # print('epoch: ', epoch, 'Test error:', Error_test)
-            saveNamePrefix = '%s/net_%d_wetD_' % (save_dir, epoch) + str(WEIGHT_DECAY) + '_depFact_' + str(SPATIAL_FACTOR) + '_RegFact_' + str(REG_LOSS_FACTOR) + '_rndShft_' + str(RAND_SHIFT_CROP)
+            Error_test = errorCompute(result, keypointsUVD__test, center__test)
+            print('Test error for epoch ', epoch, ' is ', Error_test)
+            saveNamePrefix = '%s/Model%d_' % (save_dir, epoch) + str(SPATIAL_FACTOR) + '_' + str(REG_LOSS_FACTOR) + '_%d_%dx%d_%d_%d' % (NUM_KEYPOINT, IMG_WIDTH, IMG_HEIGHT, IMG_DIV, ANCHOR_STRIDE)
             torch.save(net.state_dict(), saveNamePrefix + '.pth')
 
         # log
@@ -282,7 +287,7 @@ def test(net, use_gpu=False):
     net.load_state_dict(torch.load('results/fin_34_wetD_0.0001_depFact_0.5_RegFact_3_rndShft_5.pth', map_location=torch.device('cpu')))
     net.eval()
 
-    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//28,IMG_WIDTH//28], stride=16, use_gpu=use_gpu)
+    post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu)
 
     output = torch.FloatTensor()
     for i, (img, label) in tqdm(enumerate(dataloader__test)):
