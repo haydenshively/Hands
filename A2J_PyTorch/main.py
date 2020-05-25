@@ -38,4 +38,6 @@ if __name__ == '__main__':
     if '--train' in sys.argv:
         train(a2j, use_gpu, is_3D)
     if '--test' in sys.argv:
-        test(a2j, use_gpu, is_3D)
+        for pth_path in sys.argv[::-1]:
+            if pth_path == '--test': break
+            test(a2j, pth_path, use_gpu, is_3D)
