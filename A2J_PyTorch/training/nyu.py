@@ -284,8 +284,8 @@ def train(net, use_gpu=False, is_3D=True):
 
 
 
-def test(net, use_gpu=False, is_3D=True):
-    net.load_state_dict(torch.load('results/Model0_0.5_3_14_256x256_16_16.pth', map_location=torch.device('cpu')))
+def test(net, pth_path, use_gpu=False, is_3D=True):
+    net.load_state_dict(torch.load(pth_path, map_location=torch.device('cpu')))
     net.eval()
 
     post_process = A2JPostProcess(None, None, [IMG_HEIGHT//IMG_DIV, IMG_WIDTH//IMG_DIV], ANCHOR_STRIDE, use_gpu=use_gpu, is_3D=is_3D)
